@@ -11,7 +11,7 @@ public interface MemberRepository extends JpaRepository<Member, String> {
 	boolean existsByServerIdAndUserId(String serverId, String userId);
 
 	@Query("""
-			select m from discord_members m
+			select m from bizcord_members m
 			join fetch m.user
 			join fetch m.server
 			where m.id = :memberId
@@ -19,7 +19,7 @@ public interface MemberRepository extends JpaRepository<Member, String> {
 	Optional<Member> findByIdWithUserAndServer(String memberId);
 
 	@Query("""
-			select m from discord_members m
+			select m from bizcord_members m
 			join fetch m.user
 			join fetch m.server
 			where m.server.id = :serverId and m.user.id = :userId
@@ -27,7 +27,7 @@ public interface MemberRepository extends JpaRepository<Member, String> {
 	Optional<Member> findByServerIdAndUserIdWithUserAndServer(String serverId, String userId);
 
 	@Query("""
-			select m from discord_members m
+			select m from bizcord_members m
 			join fetch m.user
 			join fetch m.server
 			where m.server.id = :serverId
@@ -35,7 +35,7 @@ public interface MemberRepository extends JpaRepository<Member, String> {
 	List<Member> findAllByServerIdWithUserAndServer(String serverId);
 
 	@Query("""
-			select m from discord_members m
+			select m from bizcord_members m
 			join fetch m.user
 			join fetch m.server
 			where m.server.id in :serverIds

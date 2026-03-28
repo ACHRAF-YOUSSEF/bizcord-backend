@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface ChannelRepository extends JpaRepository<Channel, String> {
 	@Query("""
-			select c from discord_channels c
+			select c from bizcord_channels c
 			join fetch c.user
 			join fetch c.server
 			where c.server.id = :serverId
@@ -16,7 +16,7 @@ public interface ChannelRepository extends JpaRepository<Channel, String> {
 	List<Channel> findAllByServerIdWithUserAndServer(String serverId);
 
 	@Query("""
-			select c from discord_channels c
+			select c from bizcord_channels c
 			join fetch c.user
 			join fetch c.server
 			where c.server.id in :serverIds

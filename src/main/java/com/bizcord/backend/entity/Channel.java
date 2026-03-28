@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @EqualsAndHashCode(exclude = {"server", "user"})
 @ToString(exclude = {"server", "user"})
-@Entity(name = "discord_channels")
+@Entity(name = "bizcord_channels")
 @EntityListeners(AuditingEntityListener.class)
 public class Channel {
     @Id

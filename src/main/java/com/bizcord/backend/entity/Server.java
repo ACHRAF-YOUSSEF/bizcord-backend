@@ -22,7 +22,7 @@ import java.util.List;
 @AllArgsConstructor
 @EqualsAndHashCode(exclude = {"user", "members", "channels"})
 @ToString(exclude = {"user", "members", "channels"})
-@Entity(name = "discord_servers")
+@Entity(name = "bizcord_servers")
 @EntityListeners(AuditingEntityListener.class)
 public class Server {
     @Id
