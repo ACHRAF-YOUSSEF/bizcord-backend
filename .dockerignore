@@ -1,0 +1,7 @@
+target/
+postgres_data/
+uploads/
+*.iml
+.idea/
+.git/
+
