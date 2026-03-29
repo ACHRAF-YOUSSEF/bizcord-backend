@@ -40,4 +40,9 @@ app:
   upload:
     base-directory: uploads
     public-base-path: /uploads
+  cookie:
+    secure: false
+    same-site: Strict
+    path: /api/auth
+    max-age: 604800
 

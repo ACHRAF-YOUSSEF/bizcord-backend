@@ -39,4 +39,9 @@ app:
   upload:
     base-directory: ${APP_UPLOAD_BASE_DIRECTORY:uploads}
     public-base-path: ${APP_UPLOAD_PUBLIC_BASE_PATH:/uploads}
+  cookie:
+    secure: true
+    same-site: Strict
+    path: /api/auth
+    max-age: 604800
 
