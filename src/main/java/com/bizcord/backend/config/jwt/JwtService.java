@@ -12,11 +12,13 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
     private static final String SECRET_KEY = "597133743677397A24432646294A404E635266556A586E5A7234753778214125";
+    public static final long ACCESS_TOKEN_EXPIRY_MS = 1000L * 60 * 15;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -37,8 +39,9 @@ public class JwtService {
                 .builder()
                 .claims(extraClaims)
                 .subject(userDetails.getEmail())
+                .id(UUID.randomUUID().toString())
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24))
+                .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRY_MS))
                 .signWith(getSignInKey())
                 .compact();
     }

@@ -4,6 +4,7 @@ import com.bizcord.backend.config.ratelimit.RateLimit;
 import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.AuthRequest;
 import com.bizcord.backend.dto.AuthResponse;
+import com.bizcord.backend.dto.RefreshTokenRequest;
 import com.bizcord.backend.dto.RegisterRequest;
 import com.bizcord.backend.service.AuthService;
 import jakarta.validation.Valid;
@@ -34,5 +35,11 @@ public class AuthController {
     @PostMapping("/authenticate")
     public ResponseEntity<AuthResponse> authenticate(@Valid @RequestBody AuthRequest request) {
         return ResponseEntity.ok(service.authenticate(request));
+    }
+
+    @RateLimit(limit = 10, keyType = RateLimitKeyType.IP)
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(service.refresh(request));
     }
 }
