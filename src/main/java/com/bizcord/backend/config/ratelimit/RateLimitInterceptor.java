@@ -11,6 +11,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.HandlerMapping;
 
 import java.time.Duration;
 import java.util.Map;
@@ -69,7 +70,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     }
 
     private String resolveKey(HttpServletRequest request, RateLimit rateLimit) {
-        String endpoint = request.getMethod() + ":" + request.getRequestURI();
+        Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        String endpoint = request.getMethod() + ":" + (pattern != null ? pattern.toString() : request.getRequestURI());
 
         return switch (rateLimit.keyType()) {
             case IP -> endpoint + ":ip:" + resolveIp(request);
