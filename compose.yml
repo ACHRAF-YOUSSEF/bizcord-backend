@@ -19,7 +19,7 @@ services:
       start_period: 10s
 
   backend:
-    image: bizcord-backend:latest
+    image: achrafyoussef/bizcord-backend:latest
     container_name: bizcord-backend
     restart: unless-stopped
     depends_on:
@@ -37,7 +37,7 @@ services:
       - "8080"
 
   frontend:
-    image: bizcord-frontend:latest
+    image: achrafyoussef/bizcord-frontend:latest
     container_name: bizcord-frontend
     environment:
       BACKEND_URL: http://bizcord-backend:8080

@@ -3,9 +3,9 @@
 ## Build Images
 
 ```bash
-docker build -t bizcord-backend:latest .
+docker build -t achrafyoussef/bizcord-backend:latest .
 
-docker build -t bizcord-frontend:latest .
+docker build -t achrafyoussef/bizcord-frontend:latest .
 ```
 
 ## Docker Compose
