@@ -26,7 +26,7 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      APP_CORS_ALLOWED_ORIGIN_PATTERNS: "http://host.docker.internal:80,http://host.docker.internal:8080"
+      APP_CORS_ALLOWED_ORIGIN_PATTERNS: "http://bizcord_frontend:80"
       DB_URL: jdbc:postgresql://postgres:5432/bizcord
       DB_USERNAME: admin
       DB_PASSWORD: admin
@@ -39,7 +39,7 @@ services:
     image: bizcord-frontend:latest
     container_name: bizcord_frontend
     environment:
-      BACKEND_URL: http://host.docker.internal:8080
+      BACKEND_URL: http://bizcord_backend:8080
     restart: unless-stopped
     depends_on:
       - backend
