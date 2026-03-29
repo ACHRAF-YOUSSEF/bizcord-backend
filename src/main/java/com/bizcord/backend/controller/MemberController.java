@@ -1,5 +1,7 @@
 package com.bizcord.backend.controller;
 
+import com.bizcord.backend.config.ratelimit.RateLimit;
+import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.MemberRoleUpdateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.service.MemberService;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController {
     private final MemberService memberService;
 
+    @RateLimit(limit = 15, keyType = RateLimitKeyType.UID)
     @PatchMapping("/{memberId}")
     public ResponseEntity<ServerResponse> updateMemberRole(@PathVariable String memberId,
                                                            @RequestParam String serverId,
@@ -30,6 +33,7 @@ public class MemberController {
         return ResponseEntity.ok(memberService.updateMemberRole(memberId, serverId, request, userDetails.getUsername()));
     }
 
+    @RateLimit(limit = 15, keyType = RateLimitKeyType.UID)
     @DeleteMapping("/{memberId}")
     public ResponseEntity<ServerResponse> kickMember(@PathVariable String memberId,
                                                      @RequestParam String serverId,
@@ -37,4 +41,3 @@ public class MemberController {
         return ResponseEntity.ok(memberService.kickMember(memberId, serverId, userDetails.getUsername()));
     }
 }
-

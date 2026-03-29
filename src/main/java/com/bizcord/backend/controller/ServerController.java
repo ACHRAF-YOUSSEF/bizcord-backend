@@ -1,5 +1,7 @@
 package com.bizcord.backend.controller;
 
+import com.bizcord.backend.config.ratelimit.RateLimit;
+import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.ServerCreateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.dto.ServerUpdateRequest;
@@ -28,17 +30,20 @@ import static org.springframework.http.HttpStatus.CREATED;
 public class ServerController {
     private final ServerService serverService;
 
+    @RateLimit(limit = 60, keyType = RateLimitKeyType.UID)
     @GetMapping
     public ResponseEntity<List<ServerResponse>> getServers(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(serverService.getServersThatTheCurrentUserIsMemberOf(userDetails.getUsername()));
     }
 
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
     @GetMapping("/{id}")
     public ResponseEntity<ServerResponse> getServer(@PathVariable String id,
                                                     @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(serverService.getServerById(id, userDetails.getUsername()));
     }
 
+    @RateLimit(limit = 5, keyType = RateLimitKeyType.UID)
     @PostMapping
     public ResponseEntity<ServerResponse> createServer(@Valid @RequestBody ServerCreateRequest request,
                                                        @AuthenticationPrincipal UserDetails userDetails) {
@@ -52,12 +57,14 @@ public class ServerController {
         return ResponseEntity.ok(serverService.getServerByInviteCode(inviteCode, userDetails.getUsername()));
     }
 
+    @RateLimit(limit = 20, keyType = RateLimitKeyType.IP_AND_UID)
     @PatchMapping("/invite/{inviteCode}")
     public ResponseEntity<ServerResponse> joinServer(@PathVariable String inviteCode,
                                                      @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(serverService.joinServer(inviteCode, userDetails.getUsername()));
     }
 
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
     @PatchMapping("/{id}")
     public ResponseEntity<ServerResponse> updateServer(@PathVariable String id,
                                                        @RequestBody ServerUpdateRequest request,
@@ -65,6 +72,7 @@ public class ServerController {
         return ResponseEntity.ok(serverService.updateServer(id, request, userDetails.getUsername()));
     }
 
+    @RateLimit(limit = 10, keyType = RateLimitKeyType.UID)
     @PatchMapping("/{id}/invite-code")
     public ResponseEntity<ServerResponse> newInviteCode(@PathVariable String id,
                                                         @AuthenticationPrincipal UserDetails userDetails) {
@@ -77,6 +85,7 @@ public class ServerController {
         return ResponseEntity.ok(serverService.leaveServer(id, userDetails.getUsername()));
     }
 
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteServer(@PathVariable String id,
                                              @AuthenticationPrincipal UserDetails userDetails) {

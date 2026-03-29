@@ -1,8 +1,11 @@
 package com.bizcord.backend.controller;
 
+import com.bizcord.backend.config.ratelimit.RateLimit;
+import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.FileUploadResponse;
 import com.bizcord.backend.service.UploadService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +19,7 @@ import static org.springframework.http.HttpStatus.CREATED;
 public class UploadController {
     private final UploadService uploadService;
 
+    @RateLimit(limit = 10, keyType = RateLimitKeyType.UID)
     @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FileUploadResponse> uploadImage(@RequestParam("file") MultipartFile file) {
         return ResponseEntity
@@ -23,6 +27,7 @@ public class UploadController {
                 .body(uploadService.uploadImage(file));
     }
 
+    @RateLimit(limit = 15, keyType = RateLimitKeyType.UID)
     @PostMapping(value = "/message", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FileUploadResponse> uploadMessageFile(@RequestParam("file") MultipartFile file) {
         return ResponseEntity
@@ -30,8 +35,9 @@ public class UploadController {
                 .body(uploadService.uploadMessageFile(file));
     }
 
+    @RateLimit(limit = 120, keyType = RateLimitKeyType.IP)
     @GetMapping("/images/{file_name:.+}")
-    public ResponseEntity<org.springframework.core.io.Resource> getImage(
+    public ResponseEntity<Resource> getImage(
             @PathVariable("file_name") String fileName
     ) {
         UploadService.PublicFileResource image = uploadService.loadImage(fileName);
@@ -41,4 +47,3 @@ public class UploadController {
                 .body(image.resource());
     }
 }
-

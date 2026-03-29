@@ -1,5 +1,7 @@
 package com.bizcord.backend.controller;
 
+import com.bizcord.backend.config.ratelimit.RateLimit;
+import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.AuthRequest;
 import com.bizcord.backend.dto.AuthResponse;
 import com.bizcord.backend.dto.RegisterRequest;
@@ -20,6 +22,7 @@ import static org.springframework.http.HttpStatus.CREATED;
 public class AuthController {
     private final AuthService service;
 
+    @RateLimit(limit = 3, keyType = RateLimitKeyType.IP)
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity
@@ -27,6 +30,7 @@ public class AuthController {
                 .body(service.register(request));
     }
 
+    @RateLimit(limit = 5, keyType = RateLimitKeyType.IP)
     @PostMapping("/authenticate")
     public ResponseEntity<AuthResponse> authenticate(@Valid @RequestBody AuthRequest request) {
         return ResponseEntity.ok(service.authenticate(request));

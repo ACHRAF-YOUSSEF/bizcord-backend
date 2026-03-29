@@ -1,5 +1,7 @@
 package com.bizcord.backend.controller;
 
+import com.bizcord.backend.config.ratelimit.RateLimit;
+import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.ChannelCreateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.service.ChannelService;
@@ -22,6 +24,7 @@ import static org.springframework.http.HttpStatus.CREATED;
 public class ChannelController {
     private final ChannelService channelService;
 
+    @RateLimit(limit = 10, keyType = RateLimitKeyType.UID)
     @PostMapping
     public ResponseEntity<ServerResponse> createChannel(@RequestParam String serverId,
                                                         @Valid @RequestBody ChannelCreateRequest request,
@@ -30,4 +33,3 @@ public class ChannelController {
                 .body(channelService.createChannel(serverId, request, userDetails.getUsername()));
     }
 }
-
