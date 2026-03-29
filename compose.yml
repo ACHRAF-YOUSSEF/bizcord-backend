@@ -9,8 +9,8 @@ services:
       POSTGRES_DB: bizcord
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U admin -d bizcord" ]
       interval: 30s
@@ -18,7 +18,7 @@ services:
       retries: 5
 
   backend:
-    build: .
+    image: bizcord-backend:latest
     container_name: bizcord_backend
     restart: unless-stopped
     depends_on:
@@ -26,10 +26,22 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      APP_CORS_ALLOWED_ORIGIN_PATTERNS: "http://host.docker.internal:80,http://host.docker.internal:8080"
       DB_URL: jdbc:postgresql://postgres:5432/bizcord
       DB_USERNAME: admin
       DB_PASSWORD: admin
     volumes:
       - ./uploads:/app/uploads
+    expose:
+      - "8080"
+
+  frontend:
+    image: bizcord-frontend:latest
+    container_name: bizcord_frontend
+    environment:
+      BACKEND_URL: http://host.docker.internal:8080
+    restart: unless-stopped
+    depends_on:
+      - backend
     ports:
-      - "8080:8080"
+      - "8080:80"

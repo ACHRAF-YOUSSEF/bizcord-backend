@@ -22,7 +22,7 @@ spring:
 
 app:
   cors:
-    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://discord-clone.achrafyoussef.tech}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://bizcord.achrafyoussef.tech}
     allowed-methods:
       - GET
       - POST
