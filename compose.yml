@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17.9-alpine3.23
-    container_name: bizcord_postgres_db
+    container_name: bizcord-postgres-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
@@ -20,7 +20,7 @@ services:
 
   backend:
     image: bizcord-backend:latest
-    container_name: bizcord_backend
+    container_name: bizcord-backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -38,9 +38,9 @@ services:
 
   frontend:
     image: bizcord-frontend:latest
-    container_name: bizcord_frontend
+    container_name: bizcord-frontend
     environment:
-      BACKEND_URL: http://bizcord_backend:8080
+      BACKEND_URL: http://bizcord-backend:8080
     restart: unless-stopped
     depends_on:
       - backend
