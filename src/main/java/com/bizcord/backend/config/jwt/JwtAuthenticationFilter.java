@@ -1,6 +1,5 @@
 package com.bizcord.backend.config.jwt;
 
-import com.bizcord.backend.entity.User;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
