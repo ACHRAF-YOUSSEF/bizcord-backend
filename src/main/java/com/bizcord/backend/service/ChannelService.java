@@ -46,6 +46,10 @@ public class ChannelService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel does not belong to this server");
         }
 
+        if ("general".equalsIgnoreCase(channel.getName())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "The 'general' channel cannot be deleted");
+        }
+
         channelRepository.delete(channel);
 
         Server server = serverRepository.findByIdWithOwner(serverId)
