@@ -8,6 +8,7 @@ import com.bizcord.backend.repository.ChannelRepository;
 import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.ServerRepository;
 import com.bizcord.backend.repository.UserRepository;
+import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -62,7 +63,7 @@ public class ServerService {
         boolean isMember = memberRepository.existsByServerIdAndUserId(serverId, currentUser.getId());
 
         if (!isMember) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Server not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND);
         }
 
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
@@ -112,7 +113,7 @@ public class ServerService {
         Server server = getServerWithOwner(serverId);
 
         if (!server.getUser().getId().equals(currentUser.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only server owner can update this server");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.SERVER_UPDATE_FORBIDDEN);
         }
 
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -132,7 +133,7 @@ public class ServerService {
     public ServerResponse getServerByInviteCode(String inviteCode, String email) {
         getCurrentUser(email);
         Server server = serverRepository.findByInviteCodeWithOwner(inviteCode)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid invite code"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_INVALID_INVITE_CODE));
 
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(server.getId());
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(server.getId());
@@ -144,12 +145,12 @@ public class ServerService {
     public ServerResponse joinServer(String inviteCode, String email) {
         User currentUser = getCurrentUser(email);
         Server server = serverRepository.findByInviteCodeWithOwner(inviteCode)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid invite code"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_INVALID_INVITE_CODE));
 
         boolean alreadyMember = memberRepository.existsByServerIdAndUserId(server.getId(), currentUser.getId());
 
         if (alreadyMember) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Already a member of this server");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.SERVER_ALREADY_MEMBER);
         }
 
         Member newMember = Member
@@ -175,7 +176,7 @@ public class ServerService {
         Server server = getServerWithOwner(serverId);
 
         if (!server.getUser().getId().equals(currentUser.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only server owner can regenerate the invite code");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.SERVER_INVITE_REGEN_FORBIDDEN);
         }
 
         server.setInviteCode(generateInviteCode());
@@ -193,11 +194,11 @@ public class ServerService {
         Server server = getServerWithOwner(serverId);
 
         if (server.getUser().getId().equals(currentUser.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Server owner cannot leave their own server");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.SERVER_OWNER_LEAVE_FORBIDDEN);
         }
 
         Member member = memberRepository.findByServerIdAndUserIdWithUserAndServer(serverId, currentUser.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "You are not a member of this server"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.NOT_A_MEMBER));
 
         memberRepository.delete(member);
         memberRepository.flush();
@@ -212,10 +213,10 @@ public class ServerService {
     public void deleteServer(String serverId, String email) {
         User currentUser = getCurrentUser(email);
         Server server = serverRepository.findById(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Server not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
 
         if (!server.getUser().getId().equals(currentUser.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only server owner can delete this server");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.SERVER_DELETE_FORBIDDEN);
         }
 
         serverRepository.delete(server);
@@ -223,12 +224,12 @@ public class ServerService {
 
     private User getCurrentUser(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
     }
 
     private Server getServerWithOwner(String serverId) {
         return serverRepository.findByIdWithOwner(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Server not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
     }
 
     private String generateInviteCode() {
@@ -253,7 +254,7 @@ public class ServerService {
                 || fileName.contains("/")
                 || fileName.contains("\\")
                 || fileName.contains("..")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid server image URL");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.SERVER_INVALID_IMAGE_URL);
         }
 
         return CANONICAL_IMAGE_PREFIX + fileName;
@@ -268,19 +269,19 @@ public class ServerService {
             return extractImageFileNameFromAbsoluteUrl(value);
         }
 
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid server image URL");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.SERVER_INVALID_IMAGE_URL);
     }
 
     private String extractImageFileNameFromAbsoluteUrl(String value) {
         try {
             String path = URI.create(value).getPath();
             if (!StringUtils.hasText(path)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid server image URL");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.SERVER_INVALID_IMAGE_URL);
             }
 
             return extractImageFileNameFromPath(path);
         } catch (IllegalArgumentException _) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid server image URL");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.SERVER_INVALID_IMAGE_URL);
         }
     }
 
@@ -293,7 +294,7 @@ public class ServerService {
             return path.substring(LEGACY_IMAGE_PREFIX.length());
         }
 
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid server image URL");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.SERVER_INVALID_IMAGE_URL);
     }
 
     private ServerResponse toResponse(Server server, List<Member> members, List<Channel> channels) {
