@@ -39,7 +39,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
 
         String key = resolveKey(request, rateLimit);
-        Bucket bucket = buckets.computeIfAbsent(key, k -> createBucket(rateLimit));
+        Bucket bucket = buckets.computeIfAbsent(key, _ -> createBucket(rateLimit));
 
         if (bucket.tryConsume(1)) {
             long availableTokens = bucket.getAvailableTokens();
@@ -99,10 +99,6 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     public void evictAll() {
         buckets.clear();
-    }
-
-    public int getBucketCount() {
-        return buckets.size();
     }
 }
 
