@@ -1,0 +1,36 @@
+package com.bizcord.backend.utils;
+
+public final class ErrorMessages {
+    private ErrorMessages() {}
+
+    // User
+    public static final String USER_NOT_FOUND = "User not found";
+
+    // Auth
+    public static final String AUTH_INVALID_REFRESH_TOKEN = "Invalid refresh token";
+    public static final String AUTH_REFRESH_TOKEN_REVOKED = "Refresh token has been revoked";
+    public static final String AUTH_REFRESH_TOKEN_EXPIRED = "Refresh token has expired";
+
+    // Server
+    public static final String SERVER_NOT_FOUND = "Server not found";
+    public static final String SERVER_UPDATE_FORBIDDEN = "Only server owner can update this server";
+    public static final String SERVER_DELETE_FORBIDDEN = "Only server owner can delete this server";
+    public static final String SERVER_INVITE_REGEN_FORBIDDEN = "Only server owner can regenerate the invite code";
+    public static final String SERVER_INVALID_INVITE_CODE = "Invalid invite code";
+    public static final String SERVER_ALREADY_MEMBER = "Already a member of this server";
+    public static final String SERVER_OWNER_LEAVE_FORBIDDEN = "Server owner cannot leave their own server";
+    public static final String SERVER_INVALID_IMAGE_URL = "Invalid server image URL";
+
+    // Member
+    public static final String NOT_A_MEMBER = "You are not a member of this server";
+
+    // Channel
+    public static final String CHANNEL_NOT_FOUND = "Channel not found";
+    public static final String CHANNEL_WRONG_SERVER = "Channel does not belong to this server";
+    public static final String CHANNEL_GENERAL_DELETE = "The 'general' channel cannot be deleted";
+    public static final String CHANNEL_GENERAL_EDIT = "The 'general' channel cannot be edited";
+    public static final String CHANNEL_GENERAL_RENAME = "Cannot rename a channel to 'general'";
+    public static final String CHANNEL_CREATE_FORBIDDEN = "You do not have permission to create channels";
+    public static final String CHANNEL_EDIT_FORBIDDEN = "You do not have permission to edit channels";
+    public static final String CHANNEL_DELETE_FORBIDDEN = "You do not have permission to delete channels";
+}

@@ -12,6 +12,7 @@ import com.bizcord.backend.repository.ChannelRepository;
 import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.ServerRepository;
 import com.bizcord.backend.repository.UserRepository;
+import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,9 +25,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ChannelService {
     private static final String GENERAL_CHANNEL = "general";
-    private static final String USER_NOT_FOUND = "User not found";
-    private static final String NOT_A_MEMBER = "You are not a member of this server";
-    private static final String SERVER_NOT_FOUND = "Server not found";
 
     private final ChannelRepository channelRepository;
     private final MemberRepository memberRepository;
@@ -36,29 +34,29 @@ public class ChannelService {
     @Transactional
     public ServerResponse updateChannel(String channelId, String serverId, ChannelUpdateRequest request, String email) {
         User currentUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, USER_NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
         Member currentMember = memberRepository.findByServerIdAndUserIdWithUserAndServer(serverId, currentUser.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, NOT_A_MEMBER));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.NOT_A_MEMBER));
 
         if (currentMember.getRole() == MemberRole.GUEST) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to edit channels");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CHANNEL_EDIT_FORBIDDEN);
         }
 
         Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Channel not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CHANNEL_NOT_FOUND));
 
         if (!channel.getServer().getId().equals(serverId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel does not belong to this server");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.CHANNEL_WRONG_SERVER);
         }
 
         if (GENERAL_CHANNEL.equalsIgnoreCase(channel.getName())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "The 'general' channel cannot be edited");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CHANNEL_GENERAL_EDIT);
         }
 
         if (request.getName() != null) {
             if (GENERAL_CHANNEL.equalsIgnoreCase(request.getName())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot rename a channel to 'general'");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.CHANNEL_GENERAL_RENAME);
             }
             channel.setName(request.getName());
         }
@@ -69,7 +67,7 @@ public class ChannelService {
         channelRepository.save(channel);
 
         Server server = serverRepository.findByIdWithOwner(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, SERVER_NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
 
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
@@ -110,30 +108,30 @@ public class ChannelService {
     @Transactional
     public ServerResponse deleteChannel(String channelId, String serverId, String email) {
         User currentUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, USER_NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
         Member currentMember = memberRepository.findByServerIdAndUserIdWithUserAndServer(serverId, currentUser.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, NOT_A_MEMBER));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.NOT_A_MEMBER));
 
         if (currentMember.getRole() == MemberRole.GUEST) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to delete channels");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CHANNEL_DELETE_FORBIDDEN);
         }
 
         Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Channel not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CHANNEL_NOT_FOUND));
 
         if (!channel.getServer().getId().equals(serverId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel does not belong to this server");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.CHANNEL_WRONG_SERVER);
         }
 
         if (GENERAL_CHANNEL.equalsIgnoreCase(channel.getName())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "The 'general' channel cannot be deleted");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CHANNEL_GENERAL_DELETE);
         }
 
         channelRepository.delete(channel);
 
         Server server = serverRepository.findByIdWithOwner(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, SERVER_NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
 
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
@@ -174,17 +172,17 @@ public class ChannelService {
     @Transactional
     public ServerResponse createChannel(String serverId, ChannelCreateRequest request, String email) {
         User currentUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, USER_NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
         Member currentMember = memberRepository.findByServerIdAndUserIdWithUserAndServer(serverId, currentUser.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, NOT_A_MEMBER));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.NOT_A_MEMBER));
 
         if (currentMember.getRole() == MemberRole.GUEST) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to create channels");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CHANNEL_CREATE_FORBIDDEN);
         }
 
         Server server = serverRepository.findByIdWithOwner(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, SERVER_NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
 
         Channel channel = Channel.builder()
                 .name(request.getName())

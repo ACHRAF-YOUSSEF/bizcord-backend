@@ -9,6 +9,7 @@ import com.bizcord.backend.entity.RefreshToken;
 import com.bizcord.backend.entity.User;
 import com.bizcord.backend.repository.RefreshTokenRepository;
 import com.bizcord.backend.repository.UserRepository;
+import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -62,13 +63,13 @@ public class AuthService {
     public TokenPair refresh(String cookieToken) {
         RefreshToken stored = refreshTokenRepository
                 .findByToken(cookieToken)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.AUTH_INVALID_REFRESH_TOKEN));
 
         if (stored.isRevoked()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token has been revoked");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.AUTH_REFRESH_TOKEN_REVOKED);
         }
         if (stored.getExpiresAt().isBefore(Instant.now())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token has expired");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.AUTH_REFRESH_TOKEN_EXPIRED);
         }
 
         stored.setRevoked(true);
