@@ -11,7 +11,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableScheduling
 @RequiredArgsConstructor
 public class RateLimitConfig implements WebMvcConfigurer {
-
     private final RateLimitInterceptor rateLimitInterceptor;
 
     @Override

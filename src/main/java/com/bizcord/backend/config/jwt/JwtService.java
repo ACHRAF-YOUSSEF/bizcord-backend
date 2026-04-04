@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +17,9 @@ import java.util.UUID;
 import java.util.function.Function;
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
-    private static final String SECRET_KEY = "597133743677397A24432646294A404E635266556A586E5A7234753778214125";
-    public static final long ACCESS_TOKEN_EXPIRY_MS = 1000L * 60 * 15;
+    private final JwtProperties jwtProperties;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -41,7 +42,7 @@ public class JwtService {
                 .subject(userDetails.getEmail())
                 .id(UUID.randomUUID().toString())
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRY_MS))
+                .expiration(new Date(System.currentTimeMillis() + jwtProperties.getAccessTokenExpiryMs()))
                 .signWith(getSignInKey())
                 .compact();
     }
@@ -70,7 +71,7 @@ public class JwtService {
     }
 
     private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        byte[] keyBytes = Decoders.BASE64.decode(jwtProperties.getSecretKey());
 
         return Keys.hmacShaKeyFor(keyBytes);
     }

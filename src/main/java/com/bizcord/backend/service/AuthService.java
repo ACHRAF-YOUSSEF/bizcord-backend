@@ -1,5 +1,6 @@
 package com.bizcord.backend.service;
 
+import com.bizcord.backend.config.jwt.JwtProperties;
 import com.bizcord.backend.config.jwt.JwtService;
 import com.bizcord.backend.dto.AuthRequest;
 import com.bizcord.backend.dto.RegisterRequest;
@@ -32,6 +33,7 @@ public class AuthService {
     private final UserRepository repository;
     public final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final JwtProperties jwtProperties;
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
 
@@ -87,7 +89,7 @@ public class AuthService {
     private TokenPair buildTokenPair(User user) {
         String accessToken  = jwtService.generateToken(user);
         String refreshToken = issueRefreshToken(user);
-        return new TokenPair(accessToken, refreshToken, JwtService.ACCESS_TOKEN_EXPIRY_MS / 1000);
+        return new TokenPair(accessToken, refreshToken, jwtProperties.getAccessTokenExpiryMs() / 1000);
     }
 
     private String issueRefreshToken(User user) {
@@ -105,7 +107,7 @@ public class AuthService {
             try {
                 refreshTokenRepository.save(entity);
                 return raw;
-            } catch (DataIntegrityViolationException ignored) {
+            } catch (DataIntegrityViolationException _) {
                 // token collision – generate a new one
             }
         }

@@ -45,4 +45,6 @@ app:
     same-site: Strict
     path: /api/auth
     max-age: 604800
-
+  jwt:
+    secret-key: ${APP_JWT_SECRET_KEY}
+    access-token-expiry-ms: 900000

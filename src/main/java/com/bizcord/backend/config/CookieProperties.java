@@ -10,9 +10,9 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app.cookie")
 public class CookieProperties {
-    private boolean secure = true;
-    private String sameSite = "Strict";
-    private String path = "/api/auth";
-    private long maxAge = 60L * 60 * 24 * 7;
+    private boolean secure;
+    private String sameSite;
+    private String path;
+    private long maxAge;
 }
 
