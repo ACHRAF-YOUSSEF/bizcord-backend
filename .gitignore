@@ -33,4 +33,20 @@ build/
 .vscode/
 /uploads
 /postgres_data
-*.env
+
+# Environment & secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# CI / tooling artifacts
+.scannerwork
+coverage
+.nyc_output
+
+# OS artifacts
+.DS_Store
+Thumbs.db
