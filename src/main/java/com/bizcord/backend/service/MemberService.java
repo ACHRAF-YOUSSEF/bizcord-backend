@@ -53,10 +53,8 @@ public class MemberService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to change roles");
         }
 
-        if (currentRole == MemberRole.MODERATOR) {
-            if (targetRole == MemberRole.ADMIN || targetRole == MemberRole.MODERATOR) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Moderators can only change the role of guests");
-            }
+        if (currentRole == MemberRole.MODERATOR && (targetRole == MemberRole.ADMIN || targetRole == MemberRole.MODERATOR)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Moderators can only change the role of guests");
         }
 
         if (request.getRole() == MemberRole.ADMIN) {
