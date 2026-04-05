@@ -40,6 +40,8 @@ public class SecurityConfig {
                                 .permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/uploads/images/**")
                                 .permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/uploads/messages/**")
+                                .permitAll()
                                 .requestMatchers("/api/auth/**")
                                 .permitAll()
                                 .requestMatchers("/ws/**")

@@ -46,4 +46,16 @@ public class UploadController {
                 .contentType(MediaType.parseMediaType(image.contentType()))
                 .body(image.resource());
     }
+
+    @RateLimit(limit = 120, keyType = RateLimitKeyType.IP)
+    @GetMapping("/messages/{file_name:.+}")
+    public ResponseEntity<Resource> getMessageFile(
+            @PathVariable("file_name") String fileName
+    ) {
+        UploadService.PublicFileResource file = uploadService.loadMessageFile(fileName);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .body(file.resource());
+    }
 }
