@@ -15,7 +15,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, Stri
             join fetch m1.user u1
             join fetch c.member2 m2
             join fetch m2.user u2
-            where m1.user.id = :userId or m2.user.id = :userId
+            where (m1.user.id = :userId or m2.user.id = :userId)
+            and :userId not member of c.deletedByUserIds
             order by c.updatedAt desc
             """)
     List<Conversation> findAllByUserIdOrderByUpdatedAtDesc(String userId);

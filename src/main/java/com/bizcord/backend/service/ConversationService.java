@@ -47,6 +47,10 @@ public class ConversationService {
 
         assertParticipant(conversation, currentUser);
 
+        if (conversation.getDeletedByUserIds().contains(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND);
+        }
+
         return toResponse(conversation);
     }
 
@@ -62,7 +66,12 @@ public class ConversationService {
 
         Optional<Conversation> existing = conversationRepository.findByUserIds(currentUser.getId(), targetUser.getId());
         if (existing.isPresent()) {
-            return toResponse(existing.get());
+            Conversation conv = existing.get();
+            if (conv.getDeletedByUserIds().remove(currentUser.getId())) {
+                conversationRepository.save(conv);
+                conv = conversationRepository.findByIdWithMembers(conv.getId()).orElseThrow();
+            }
+            return toResponse(conv);
         }
 
         List<Member> currentUserMembers = memberRepository.findAllByUserIdWithUserAndServer(currentUser.getId());
@@ -128,6 +137,21 @@ public class ConversationService {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
+    }
+
+    @Transactional
+    public void deleteConversation(String conversationId, String email) {
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
+
+        Conversation conversation = conversationRepository.findByIdWithMembers(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
+
+        assertParticipant(conversation, currentUser);
+
+        // Soft-delete: mark this user as having left the conversation view
+        conversation.getDeletedByUserIds().add(currentUser.getId());
+        conversationRepository.save(conversation);
     }
 
     private void assertParticipant(Conversation conversation, User user) {
