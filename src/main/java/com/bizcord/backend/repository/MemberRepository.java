@@ -41,4 +41,12 @@ public interface MemberRepository extends JpaRepository<Member, String> {
 			where m.server.id in :serverIds
 			""")
 	List<Member> findAllByServerIdInWithUserAndServer(List<String> serverIds);
+
+	@Query("""
+			select m from bizcord_members m
+			join fetch m.user
+			join fetch m.server
+			where m.user.id = :userId
+			""")
+	List<Member> findAllByUserIdWithUserAndServer(String userId);
 }

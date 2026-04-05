@@ -1,7 +1,7 @@
 package com.bizcord.backend.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -15,30 +15,29 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"server", "user"})
-@ToString(exclude = {"server", "user"})
-@Entity(name = "bizcord_channels")
+@EqualsAndHashCode(exclude = {"member", "conversation"})
+@ToString(exclude = {"member", "conversation"})
+@Entity(name = "bizcord_direct_messages")
 @EntityListeners(AuditingEntityListener.class)
-public class Channel {
+public class DirectMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @NotBlank
-    private String name;
-
-    @Enumerated(EnumType.STRING)
-    private ChannelType type = ChannelType.TEXT;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Server server;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    private User user;
+    @Size(min = 1, max = 2000)
+    private String content;
 
     @Builder.Default
-    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Message> messages = new ArrayList<>();
+    private List<String> attachments = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Member member;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Conversation conversation;
+
+    @Builder.Default
+    private boolean deleted = false;
 
     @CreatedDate
     private LocalDateTime createdAt;

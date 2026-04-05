@@ -23,6 +23,18 @@ public final class ErrorMessages {
 
     // Member
     public static final String NOT_A_MEMBER = "You are not a member of this server";
+    public static final String MEMBER_NOT_FOUND = "Member not found";
+    public static final String MEMBER_NOT_IN_SERVER = "Member not found in this server";
+    public static final String MEMBER_SELF_ROLE_CHANGE = "You cannot change your own role";
+    public static final String MEMBER_ROLE_NO_PERMISSION = "You do not have permission to change roles";
+    public static final String MEMBER_MODERATOR_CANNOT_CHANGE_ADMIN = "Moderators can only change the role of guests";
+    public static final String MEMBER_CANNOT_ASSIGN_ADMIN = "Cannot assign the ADMIN role";
+    public static final String MEMBER_SELF_KICK = "You cannot kick yourself";
+    public static final String MEMBER_KICK_NO_PERMISSION = "You do not have permission to kick members";
+    public static final String MEMBER_MODERATOR_CANNOT_KICK_ADMIN = "Moderators cannot kick the admin";
+
+    // Conversation
+    public static final String CONVERSATION_NO_COMMON_SERVER = "No common server found between the two users";
 
     // Channel
     public static final String CHANNEL_NOT_FOUND = "Channel not found";
