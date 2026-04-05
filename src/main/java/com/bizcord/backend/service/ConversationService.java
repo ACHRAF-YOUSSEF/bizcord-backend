@@ -37,6 +37,19 @@ public class ConversationService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public ConversationResponse getConversationById(String conversationId, String email) {
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
+
+        Conversation conversation = conversationRepository.findByIdWithMembers(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
+
+        assertParticipant(conversation, currentUser);
+
+        return toResponse(conversation);
+    }
+
     @Transactional
     public ConversationResponse getOrCreateConversation(String memberId, String email) {
         User currentUser = userRepository.findByEmail(email)
@@ -115,5 +128,13 @@ public class ConversationService {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
+    }
+
+    private void assertParticipant(Conversation conversation, User user) {
+        boolean isParticipant = conversation.getMember1().getUser().getId().equals(user.getId())
+                || conversation.getMember2().getUser().getId().equals(user.getId());
+        if (!isParticipant) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CONVERSATION_NOT_A_PARTICIPANT);
+        }
     }
 }
