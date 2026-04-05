@@ -65,25 +65,33 @@ public class UploadService {
     }
 
     public PublicFileResource loadImage(String fileName) {
+        return loadPublicFile(fileName, "images", true);
+    }
+
+    public PublicFileResource loadMessageFile(String fileName) {
+        return loadPublicFile(fileName, "messages", false);
+    }
+
+    private PublicFileResource loadPublicFile(String fileName, String subdirectory, boolean imageOnly) {
         String sanitizedFilename = sanitizeRequestedFilename(fileName);
         try {
             Path uploadRoot = Path.of(uploadProperties.getBaseDirectory()).toAbsolutePath().normalize();
-            Path imagePath = safeResolve(uploadRoot.resolve("images").normalize(), sanitizedFilename);
+            Path filePath = safeResolve(uploadRoot.resolve(subdirectory).normalize(), sanitizedFilename);
 
-            if (!Files.exists(imagePath) || !Files.isRegularFile(imagePath)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+            if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found");
             }
-            String contentType = detectContentType(imagePath);
-            if (!contentType.toLowerCase().startsWith(IMAGE_CONTENT_TYPE_PREFIX)) {
+            String contentType = detectContentType(filePath);
+            if (imageOnly && !contentType.toLowerCase().startsWith(IMAGE_CONTENT_TYPE_PREFIX)) {
                 throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Requested file is not an image");
             }
-            Resource resource = new UrlResource(imagePath.toUri());
+            Resource resource = new UrlResource(filePath.toUri());
             if (!resource.exists() || !resource.isReadable()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found");
             }
             return new PublicFileResource(resource, contentType);
         } catch (IOException _) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to load image");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to load file");
         }
     }
 
