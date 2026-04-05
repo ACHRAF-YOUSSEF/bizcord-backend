@@ -46,7 +46,7 @@ public class UserService {
 
         return allMembers.stream()
                 .filter(u -> !u.getId().equals(currentUser.getId()) && !u.getUser().getId().equals(currentUser.getId()))
-                .collect(Collectors.toMap(Member::getId, u -> u, (a, b) -> a))
+                .collect(Collectors.toMap(Member::getId, u -> u, (a, _) -> a))
                 .values()
                 .stream()
                 .map(this::toProfileResponse)
