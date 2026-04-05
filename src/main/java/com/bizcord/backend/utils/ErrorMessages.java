@@ -34,7 +34,14 @@ public final class ErrorMessages {
     public static final String MEMBER_MODERATOR_CANNOT_KICK_ADMIN = "Moderators cannot kick the admin";
 
     // Conversation
+    public static final String CONVERSATION_NOT_FOUND = "Conversation not found";
+    public static final String CONVERSATION_NOT_A_PARTICIPANT = "You are not a participant of this conversation";
     public static final String CONVERSATION_NO_COMMON_SERVER = "No common server found between the two users";
+
+    // Direct Message
+    public static final String DIRECT_MESSAGE_NOT_FOUND = "Message not found";
+    public static final String DIRECT_MESSAGE_NOT_OWNER = "You can only modify your own messages";
+    public static final String DIRECT_MESSAGE_EMPTY = "Message must have content or attachments";
 
     // Channel
     public static final String CHANNEL_NOT_FOUND = "Channel not found";

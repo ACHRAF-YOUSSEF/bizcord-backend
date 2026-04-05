@@ -1,0 +1,40 @@
+package com.bizcord.backend.repository;
+
+import com.bizcord.backend.entity.DirectMessage;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+public interface DirectMessageRepository extends JpaRepository<DirectMessage, String> {
+    @Query("""
+            select dm from bizcord_direct_messages dm
+            join fetch dm.member m
+            join fetch m.user
+            where dm.conversation.id = :conversationId
+            order by dm.createdAt desc
+            """)
+    List<DirectMessage> findLatestByConversationId(String conversationId, Pageable pageable);
+
+    @Query("""
+            select dm from bizcord_direct_messages dm
+            join fetch dm.member m
+            join fetch m.user
+            where dm.conversation.id = :conversationId
+              and dm.createdAt < :cursor
+            order by dm.createdAt desc
+            """)
+    List<DirectMessage> findByConversationIdBeforeCursor(String conversationId, LocalDateTime cursor, Pageable pageable);
+
+    @Query("""
+            select dm from bizcord_direct_messages dm
+            join fetch dm.member m
+            join fetch m.user
+            where dm.id = :id
+            """)
+    Optional<DirectMessage> findByIdWithMemberAndUser(String id);
+}
+
