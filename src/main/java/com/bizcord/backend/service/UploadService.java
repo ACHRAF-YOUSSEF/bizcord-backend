@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -29,15 +30,41 @@ public class UploadService {
     private static final String IMAGE_CONTENT_TYPE_PREFIX = "image/";
     private static final Set<String> MESSAGE_ALLOWED_CONTENT_TYPES = Set.of(
             "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.oasis.opendocument.text",
+            "application/vnd.oasis.opendocument.spreadsheet",
+            "application/vnd.oasis.opendocument.presentation",
+            "application/rtf",
             "application/zip",
             "application/x-zip",
             "application/x-zip-compressed",
-            "multipart/x-zip"
+            "multipart/x-zip",
+            "application/x-rar-compressed",
+            "application/vnd.rar",
+            "application/x-7z-compressed",
+            "application/gzip",
+            "application/x-tar",
+            "audio/mpeg",
+            "audio/ogg",
+            "audio/wav",
+            "audio/webm",
+            "audio/flac",
+            "audio/aac",
+            "application/json",
+            "application/xml",
+            "text/csv",
+            "text/xml"
     );
 
     private final UploadProperties uploadProperties;
 
-    public record PublicFileResource(Resource resource, String contentType) {}
+    public record PublicFileResource(Resource resource, String contentType) {
+    }
 
     public FileUploadResponse uploadImage(MultipartFile file) {
         validateFileProvided(file);
@@ -55,7 +82,8 @@ public class UploadService {
         validateFileProvided(file);
         String contentType = normalizeContentType(file);
         if (!contentType.startsWith(IMAGE_CONTENT_TYPE_PREFIX) && !contentType.startsWith("video/")
-                && !contentType.startsWith("text/") && !MESSAGE_ALLOWED_CONTENT_TYPES.contains(contentType)) {
+                && !contentType.startsWith("audio/") && !contentType.startsWith("text/")
+                && !MESSAGE_ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new ResponseStatusException(
                     HttpStatus.UNSUPPORTED_MEDIA_TYPE,
                     "Only images, videos, PDF, ZIP, and text files are allowed"
@@ -99,7 +127,7 @@ public class UploadService {
         String originalFilename = sanitizeOriginalFilename(file.getOriginalFilename());
         String storedFilename = computeSha256Hex(file) + extensionForContentType(contentType);
 
-        if (!storedFilename.matches("[0-9a-f]{64}(\\.[a-zA-Z0-9]{1,5})?")) {
+        if (!storedFilename.matches("[0-9a-f]{64}(\\.[a-zA-Z0-9]{1,10})?")) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store uploaded file");
         }
 
@@ -175,26 +203,60 @@ public class UploadService {
         }
     }
 
+    private static final Map<String, String> CONTENT_TYPE_TO_EXTENSION = Map.ofEntries(
+            Map.entry("image/jpeg", ".jpg"),
+            Map.entry("image/png", ".png"),
+            Map.entry("image/gif", ".gif"),
+            Map.entry("image/webp", ".webp"),
+            Map.entry("image/bmp", ".bmp"),
+            Map.entry("image/svg+xml", ".svg"),
+            Map.entry("image/avif", ".avif"),
+            Map.entry("image/tiff", ".tiff"),
+            Map.entry("application/pdf", ".pdf"),
+            Map.entry("application/msword", ".doc"),
+            Map.entry("application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"),
+            Map.entry("application/vnd.ms-excel", ".xls"),
+            Map.entry("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
+            Map.entry("application/vnd.ms-powerpoint", ".ppt"),
+            Map.entry("application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx"),
+            Map.entry("application/vnd.oasis.opendocument.text", ".odt"),
+            Map.entry("application/vnd.oasis.opendocument.spreadsheet", ".ods"),
+            Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"),
+            Map.entry("application/rtf", ".rtf"),
+            Map.entry("application/zip", ".zip"),
+            Map.entry("application/x-zip", ".zip"),
+            Map.entry("application/x-zip-compressed", ".zip"),
+            Map.entry("multipart/x-zip", ".zip"),
+            Map.entry("application/x-rar-compressed", ".rar"),
+            Map.entry("application/vnd.rar", ".rar"),
+            Map.entry("application/x-7z-compressed", ".7z"),
+            Map.entry("application/gzip", ".gz"),
+            Map.entry("application/x-tar", ".tar"),
+            Map.entry("video/mp4", ".mp4"),
+            Map.entry("video/webm", ".webm"),
+            Map.entry("video/quicktime", ".mov"),
+            Map.entry("video/x-matroska", ".mkv"),
+            Map.entry("video/x-msvideo", ".avi"),
+            Map.entry("video/mpeg", ".mpeg"),
+            Map.entry("audio/mpeg", ".mp3"),
+            Map.entry("audio/ogg", ".ogg"),
+            Map.entry("audio/wav", ".wav"),
+            Map.entry("audio/webm", ".weba"),
+            Map.entry("audio/flac", ".flac"),
+            Map.entry("audio/aac", ".aac"),
+            Map.entry("application/json", ".json"),
+            Map.entry("application/xml", ".xml"),
+            Map.entry("text/xml", ".xml"),
+            Map.entry("text/csv", ".csv"),
+            Map.entry("text/plain", ".txt"),
+            Map.entry("text/html", ".html"),
+            Map.entry("text/css", ".css"),
+            Map.entry("text/javascript", ".js"),
+            Map.entry("application/javascript", ".js")
+    );
+
     private String extensionForContentType(String contentType) {
-        return switch (contentType) {
-            case "image/jpeg" -> ".jpg";
-            case "image/png" -> ".png";
-            case "image/gif" -> ".gif";
-            case "image/webp" -> ".webp";
-            case "image/bmp" -> ".bmp";
-            case "image/svg+xml" -> ".svg";
-            case "image/avif" -> ".avif";
-            case "image/tiff" -> ".tiff";
-            case "application/pdf" -> ".pdf";
-            case "application/zip", "application/x-zip", "application/x-zip-compressed", "multipart/x-zip" -> ".zip";
-            case "video/mp4" -> ".mp4";
-            case "video/webm" -> ".webm";
-            case "video/quicktime" -> ".mov";
-            case "video/x-matroska" -> ".mkv";
-            case "video/x-msvideo" -> ".avi";
-            case "video/mpeg" -> ".mpeg";
-            default -> "";
-        };
+        return CONTENT_TYPE_TO_EXTENSION.getOrDefault(contentType, "");
     }
 
     private String toHex(byte[] bytes) {
