@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -23,4 +25,11 @@ public class UserController {
     public ResponseEntity<UserProfileResponse> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(userService.getCurrentUser(userDetails.getUsername()));
     }
+
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
+    @GetMapping("/friends")
+    public ResponseEntity<List<UserProfileResponse>> getFriends(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(userService.getFriends(userDetails.getUsername()));
+    }
 }
+
