@@ -24,7 +24,7 @@ public class Message {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Size(min = 1, max = 2000)
+    @Size(max = 2000)
     private String content;
 
     @Builder.Default
