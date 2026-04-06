@@ -64,6 +64,10 @@ public class ConversationService {
 
         User targetUser = targetMember.getUser();
 
+        if (currentUser.getId().equals(targetUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.CONVERSATION_SELF_NOT_ALLOWED);
+        }
+
         Optional<Conversation> existing = conversationRepository.findByUserIds(currentUser.getId(), targetUser.getId());
         if (existing.isPresent()) {
             Conversation conv = existing.get();
