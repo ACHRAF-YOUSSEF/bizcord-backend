@@ -1,7 +1,8 @@
 package com.bizcord.backend.utils;
 
 public final class ErrorMessages {
-    private ErrorMessages() {}
+    private ErrorMessages() {
+    }
 
     // User
     public static final String USER_NOT_FOUND = "User not found";
@@ -37,6 +38,7 @@ public final class ErrorMessages {
     public static final String CONVERSATION_NOT_FOUND = "Conversation not found";
     public static final String CONVERSATION_NOT_A_PARTICIPANT = "You are not a participant of this conversation";
     public static final String CONVERSATION_NO_COMMON_SERVER = "No common server found between the two users";
+    public static final String CONVERSATION_SELF_NOT_ALLOWED = "You cannot start a conversation with yourself";
 
     // Direct Message
     public static final String DIRECT_MESSAGE_NOT_FOUND = "Message not found";
