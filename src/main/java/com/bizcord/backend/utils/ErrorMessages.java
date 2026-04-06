@@ -45,6 +45,12 @@ public final class ErrorMessages {
     public static final String DIRECT_MESSAGE_NOT_OWNER = "You can only modify your own messages";
     public static final String DIRECT_MESSAGE_EMPTY = "Message must have content or attachments";
 
+    // Message (channel)
+    public static final String MESSAGE_NOT_FOUND = "Message not found";
+    public static final String MESSAGE_EMPTY = "Message must have content or attachments";
+    public static final String MESSAGE_NOT_OWNER = "You can only edit your own messages";
+    public static final String MESSAGE_DELETE_FORBIDDEN = "Only the message author, an admin, or a moderator can delete messages";
+
     // Channel
     public static final String CHANNEL_NOT_FOUND = "Channel not found";
     public static final String CHANNEL_WRONG_SERVER = "Channel does not belong to this server";
