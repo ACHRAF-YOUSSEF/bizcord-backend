@@ -1,8 +1,17 @@
 package com.bizcord.rtc.controller;
 
-import com.bizcord.rtc.dto.SignalMessage;
-import com.bizcord.rtc.model.CallType;
-import com.bizcord.rtc.service.CallRecordService;
+import com.bizcord.backend.entity.Conversation;
+import com.bizcord.backend.entity.User;
+import com.bizcord.backend.repository.ConversationRepository;
+import com.bizcord.backend.repository.UserRepository;
+import com.bizcord.rtc.dto.MediasoupSignalMessage;
+import com.bizcord.rtc.dto.RtcAnswerSignalMessage;
+import com.bizcord.rtc.dto.RtcCallEndedMessage;
+import com.bizcord.rtc.dto.RtcCallRejectedMessage;
+import com.bizcord.rtc.dto.RtcCallRequestMessage;
+import com.bizcord.rtc.dto.RtcCallRoomMessage;
+import com.bizcord.rtc.dto.RtcIceCandidateSignalMessage;
+import com.bizcord.rtc.dto.RtcOfferSignalMessage;
 import com.bizcord.rtc.service.MediasoupSidecarService;
 import com.bizcord.rtc.service.RtcRoomService;
 import lombok.RequiredArgsConstructor;
@@ -23,171 +32,291 @@ import java.util.Map;
 public class RtcSignalingController {
     private final SimpMessagingTemplate messagingTemplate;
     private final RtcRoomService rtcRoomService;
-    private final CallRecordService callRecordService;
     private final MediasoupSidecarService mediasoupSidecarService;
+    private final UserRepository userRepository;
+    private final ConversationRepository conversationRepository;
 
     @MessageMapping("/rtc/call-request")
     public void handleCallRequest(
-            @Payload SignalMessage message,
+            @Payload RtcCallRequestMessage message,
             Principal principal) {
 
-        String callerId = principal.getName();
-        log.debug("call-request from {} to {} (room={})", callerId, message.targetUserId(), message.roomId());
+        log.info("call-request payload: callerId={} roomId={} callType={}",
+                message.callerId(), message.roomId(), message.callType());
 
-        if (message.roomId() != null) {
-            rtcRoomService.joinRoom(message.roomId(), callerId);
+        User caller = resolveCurrentUser(principal);
+        if (caller == null || message.roomId() == null || message.roomId().isBlank()) {
+            log.warn("call-request: early exit — caller={} roomId={}",
+                    caller != null ? caller.getId() : "NULL", message.roomId());
+            return;
+        }
+        log.info("call-request: caller resolved id={}", caller.getId());
+
+        Conversation conversation = resolveConversation(message.roomId());
+        if (conversation == null) {
+            log.warn("call-request: conversation not found for roomId={}", message.roomId());
+            return;
+        }
+        log.info("call-request: conversation found id={}", conversation.getId());
+
+        String calleeUserId;
+        try {
+            calleeUserId = findOtherParticipantUserId(conversation, caller.getId());
+        } catch (Exception e) {
+            log.error("call-request: findOtherParticipantUserId threw — likely LazyInitializationException", e);
+            return;
         }
 
+        if (calleeUserId == null) {
+            log.warn("call-request: sender {} is not a participant in room={}", caller.getId(), message.roomId());
+            return;
+        }
+        String calleePrincipalName = toPrincipalName(calleeUserId);
+        if (calleePrincipalName == null) {
+            return;
+        }
+
+        log.debug("call-request from {} to {} (room={})", caller.getId(), calleeUserId, message.roomId());
+
+        rtcRoomService.joinRoom(message.roomId(), caller.getEmail());
+
+        log.info("call-request: sending to callee principalName={}", calleePrincipalName);
         messagingTemplate.convertAndSendToUser(
-                message.targetUserId(),
+                calleePrincipalName,
                 "/queue/rtc/call-request",
-                new SignalMessage(
-                        message.targetUserId(),
-                        callerId,
-                        message.roomId(),
-                        null,
-                        null,
-                        null));
+                new RtcCallRequestMessage(
+                        caller.getId(),
+                        caller.getFullName(),
+                        caller.getImageUrl(),
+                        message.callType() != null ? message.callType() : "dm",
+                        message.roomId()));
+        log.info("call-request: sent successfully to callee principalName={}", calleePrincipalName);
     }
 
     @MessageMapping("/rtc/reject-call")
     public void handleRejectCall(
-            @Payload SignalMessage message,
+            @Payload RtcCallRoomMessage message,
             Principal principal) {
 
-        String rejecterId = principal.getName();
-        log.debug("reject-call from {} to {} (room={})", rejecterId, message.callerId(), message.roomId());
-
-        if (message.roomId() != null) {
-            rtcRoomService.leaveRoom(message.roomId(), rejecterId);
-            if (message.callerId() != null) {
-                rtcRoomService.leaveRoom(message.roomId(), message.callerId());
-            }
+        User rejecter = resolveCurrentUser(principal);
+        if (rejecter == null || message.roomId() == null || message.roomId().isBlank()) {
+            return;
         }
 
-        if (message.callerId() != null) {
-            messagingTemplate.convertAndSendToUser(
-                    message.callerId(),
-                    "/queue/rtc/call-rejected",
-                    new SignalMessage(
-                            message.callerId(),
-                            rejecterId,
-                            message.roomId(),
-                            null,
-                            null,
-                            null));
+        Conversation conversation = resolveConversation(message.roomId());
+        if (conversation == null) {
+            return;
         }
+
+        String otherUserId = findOtherParticipantUserId(conversation, rejecter.getId());
+        if (otherUserId == null) {
+            log.warn("reject-call: sender {} is not a participant in room={}", rejecter.getId(), message.roomId());
+            return;
+        }
+        String otherPrincipalName = toPrincipalName(otherUserId);
+        if (otherPrincipalName == null) {
+            return;
+        }
+
+        log.debug("reject-call from {} to {} (room={})", rejecter.getId(), otherUserId, message.roomId());
+
+        rtcRoomService.leaveRoom(message.roomId(), rejecter.getEmail());
+        String otherEmail = toEmail(otherUserId);
+        if (otherEmail != null) {
+            rtcRoomService.leaveRoom(message.roomId(), otherEmail);
+        }
+
+        messagingTemplate.convertAndSendToUser(
+                otherPrincipalName,
+                "/queue/rtc/call-rejected",
+                new RtcCallRejectedMessage(rejecter.getId(), message.roomId()));
     }
 
     @MessageMapping("/rtc/end-call")
     public void handleEndCall(
-            @Payload SignalMessage message,
+            @Payload RtcCallRoomMessage message,
             Principal principal) {
 
-        String hangUpUserId = principal.getName();
-        String otherUserId = message.targetUserId();
-        log.debug("end-call from {} (room={})", hangUpUserId, message.roomId());
-
-        if (message.roomId() != null) {
-            rtcRoomService.leaveRoom(message.roomId(), hangUpUserId);
-            if (otherUserId != null) {
-                rtcRoomService.leaveRoom(message.roomId(), otherUserId);
-            }
+        User endedBy = resolveCurrentUser(principal);
+        if (endedBy == null || message.roomId() == null || message.roomId().isBlank()) {
+            return;
         }
 
-        if (otherUserId != null) {
-            messagingTemplate.convertAndSendToUser(
-                    otherUserId,
-                    "/queue/rtc/end-call",
-                    new SignalMessage(
-                            otherUserId,
-                            hangUpUserId,
-                            message.roomId(),
-                            null,
-                            null,
-                            null));
+        Conversation conversation = resolveConversation(message.roomId());
+        if (conversation == null) {
+            return;
         }
+
+        String otherUserId = findOtherParticipantUserId(conversation, endedBy.getId());
+        if (otherUserId == null) {
+            log.warn("end-call: sender {} is not a participant in room={}", endedBy.getId(), message.roomId());
+            return;
+        }
+        String otherPrincipalName = toPrincipalName(otherUserId);
+        if (otherPrincipalName == null) {
+            return;
+        }
+
+        log.debug("end-call from {} to {} (room={})", endedBy.getId(), otherUserId, message.roomId());
+
+        rtcRoomService.leaveRoom(message.roomId(), endedBy.getEmail());
+        String otherEmail = toEmail(otherUserId);
+        if (otherEmail != null) {
+            rtcRoomService.leaveRoom(message.roomId(), otherEmail);
+        }
+
+        messagingTemplate.convertAndSendToUser(
+                otherPrincipalName,
+                "/queue/rtc/call-ended",
+                new RtcCallEndedMessage(endedBy.getId(), message.roomId()));
     }
 
     @MessageMapping("/rtc/offer")
     public void handleOffer(
-            @Payload SignalMessage message,
+            @Payload RtcOfferSignalMessage message,
             Principal principal) {
 
-        String senderId = principal.getName();
-        log.debug("SDP offer from {} to {} (room={})", senderId, message.targetUserId(), message.roomId());
+        User caller = resolveCurrentUser(principal);
+        if (caller == null || message.targetUserId() == null || message.targetUserId().isBlank()) {
+            return;
+        }
+        String targetPrincipalName = toPrincipalName(message.targetUserId());
+        if (targetPrincipalName == null) {
+            return;
+        }
+
+        log.debug("SDP offer from {} to {} (room={})", caller.getId(), message.targetUserId(), message.roomId());
 
         messagingTemplate.convertAndSendToUser(
-                message.targetUserId(),
+                targetPrincipalName,
                 "/queue/rtc/offer",
-                new SignalMessage(
+                new RtcOfferSignalMessage(
+                        caller.getId(),
                         message.targetUserId(),
-                        senderId,
                         message.roomId(),
-                        message.sdp(),
-                        null,
-                        null));
+                        message.offer()));
     }
 
     @MessageMapping("/rtc/answer")
     public void handleAnswer(
-            @Payload SignalMessage message,
+            @Payload RtcAnswerSignalMessage message,
             Principal principal) {
 
-        String answererId = principal.getName();
-        log.debug("SDP answer from {} to {} (room={})", answererId, message.callerId(), message.roomId());
+        User answerer = resolveCurrentUser(principal);
+        if (answerer == null || message.targetUserId() == null || message.targetUserId().isBlank()) {
+            return;
+        }
+        String targetPrincipalName = toPrincipalName(message.targetUserId());
+        if (targetPrincipalName == null) {
+            return;
+        }
+
+        log.debug("SDP answer from {} to {} (room={})", answerer.getId(), message.targetUserId(), message.roomId());
 
         if (message.roomId() != null) {
-            rtcRoomService.joinRoom(message.roomId(), answererId);
+            rtcRoomService.joinRoom(message.roomId(), answerer.getEmail());
         }
 
-        if (message.callerId() != null && message.roomId() != null) {
-            callRecordService.createCallRecord(
-                    message.roomId(),
-                    message.callerId(),
-                    answererId,
-                    CallType.DM);
-        }
-
-        if (message.callerId() != null) {
-            messagingTemplate.convertAndSendToUser(
-                    message.callerId(),
-                    "/queue/rtc/answer",
-                    new SignalMessage(
-                            message.callerId(),
-                            answererId,
-                            message.roomId(),
-                            message.sdp(),
-                            null,
-                            null));
-        }
+        messagingTemplate.convertAndSendToUser(
+                targetPrincipalName,
+                "/queue/rtc/answer",
+                new RtcAnswerSignalMessage(
+                        answerer.getId(),
+                        message.targetUserId(),
+                        message.roomId(),
+                        message.answer()));
     }
 
     @MessageMapping("/rtc/ice-candidate")
     public void handleIceCandidate(
-            @Payload SignalMessage message,
+            @Payload RtcIceCandidateSignalMessage message,
             Principal principal) {
 
-        String senderId = principal.getName();
+        User sender = resolveCurrentUser(principal);
+        if (sender == null || message.targetUserId() == null || message.targetUserId().isBlank()) {
+            return;
+        }
+        String targetPrincipalName = toPrincipalName(message.targetUserId());
+        if (targetPrincipalName == null) {
+            return;
+        }
 
         messagingTemplate.convertAndSendToUser(
-                message.targetUserId(),
+                targetPrincipalName,
                 "/queue/rtc/ice-candidate",
-                new SignalMessage(
+                new RtcIceCandidateSignalMessage(
+                        sender.getId(),
                         message.targetUserId(),
-                        senderId,
                         message.roomId(),
-                        null,
-                        message.candidate(),
-                        null));
+                        message.candidate()));
+    }
+
+    private User resolveCurrentUser(Principal principal) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            log.warn("RTC signaling rejected: missing authenticated principal");
+            return null;
+        }
+
+        return userRepository.findByEmail(principal.getName())
+                .orElseGet(() -> {
+                    log.warn("RTC signaling rejected: no user found for principal={}", principal.getName());
+                    return null;
+                });
+    }
+
+    private Conversation resolveConversation(String roomId) {
+        return conversationRepository.findByIdWithMembers(roomId)
+                .orElseGet(() -> {
+                    log.warn("RTC signaling rejected: conversation not found for roomId={}", roomId);
+                    return null;
+                });
+    }
+
+    private String findOtherParticipantUserId(Conversation conversation, String senderUserId) {
+        String userId1 = conversation.getMember1().getUser().getId();
+        String userId2 = conversation.getMember2().getUser().getId();
+
+        if (senderUserId.equals(userId1)) {
+            return userId2;
+        }
+        if (senderUserId.equals(userId2)) {
+            return userId1;
+        }
+        return null;
+    }
+
+    private String toPrincipalName(String userId) {
+        return userRepository.findById(userId)
+                .map(User::getEmail)
+                .orElseGet(() -> {
+                    log.warn("RTC signaling dropped: target user not found id={}", userId);
+                    return null;
+                });
+    }
+
+    private String toEmail(String userId) {
+        return userRepository.findById(userId)
+                .map(User::getEmail)
+                .orElse(null);
+    }
+
+    private String resolvePrincipalName(Principal principal, String route) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            log.warn("{} rejected: missing authenticated principal", route);
+            return null;
+        }
+        return principal.getName();
     }
 
     @MessageMapping("/rtc/ms-get-caps")
     public void handleGetRouterCaps(
-            @Payload SignalMessage message,
+            @Payload MediasoupSignalMessage message,
             Principal principal) {
 
-        String userId = principal.getName();
+        String userId = resolvePrincipalName(principal, "ms-get-caps");
+        if (userId == null) {
+            return;
+        }
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-get-caps requested by {} but mediasoup sidecar is unavailable", userId);
@@ -196,84 +325,103 @@ public class RtcSignalingController {
             return;
         }
 
-        Map<String, Object> caps = mediasoupSidecarService.getRouterCapabilities(message.roomId());
+        String channelId = message.channelId();
+        Map<String, Object> caps = mediasoupSidecarService.getRouterCapabilities(channelId);
         if (caps != null) {
-            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-router-caps", caps);
+            Map<String, Object> response = new HashMap<>(caps);
+            response.put("channelId", channelId);
+            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-router-caps", response);
         } else {
-            log.warn("ms-get-caps: sidecar returned null for roomId={} user={}", message.roomId(), userId);
+            log.warn("ms-get-caps: sidecar returned null for channelId={} user={}", channelId, userId);
             messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-router-caps",
-                    Map.of("error", "sidecar_error"));
+                    Map.of("channelId", channelId, "error", "sidecar_error"));
         }
     }
 
     @MessageMapping("/rtc/ms-create-transport")
     public void handleCreateTransport(
-            @Payload SignalMessage message,
+            @Payload MediasoupSignalMessage message,
             Principal principal) {
 
-        String userId = principal.getName();
+        String userId = resolvePrincipalName(principal, "ms-create-transport");
+        if (userId == null) {
+            return;
+        }
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-create-transport requested by {} but mediasoup sidecar is unavailable", userId);
             return;
         }
 
-        String direction = message.candidate() != null ? message.candidate() : "send";
+        String channelId = message.channelId();
+        String direction = message.direction() != null ? message.direction() : "send";
         Map<String, Object> transportParams =
-                mediasoupSidecarService.createWebRtcTransport(message.roomId(), direction);
+                mediasoupSidecarService.createWebRtcTransport(channelId, direction);
 
         if (transportParams != null) {
-            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-transport-params", transportParams);
+            Map<String, Object> response = new HashMap<>(transportParams);
+            response.put("channelId", channelId);
+            response.put("direction", direction);
+            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-transport-params", response);
         }
     }
 
     @MessageMapping("/rtc/ms-connect-transport")
     public void handleConnectTransport(
-            @Payload SignalMessage message,
+            @Payload MediasoupSignalMessage message,
             Principal principal) {
 
-        String userId = principal.getName();
+        String userId = resolvePrincipalName(principal, "ms-connect-transport");
+        if (userId == null) {
+            return;
+        }
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-connect-transport requested by {} but mediasoup sidecar is unavailable", userId);
             return;
         }
 
-        String transportId = message.targetUserId();
-        Map<String, Object> dtlsParameters = message.data() != null ? message.data() : Map.of();
+        String channelId = message.channelId();
+        String transportId = message.transportId();
+        Map<String, Object> dtlsParameters = message.dtlsParameters() != null ? message.dtlsParameters() : Map.of();
 
-        mediasoupSidecarService.connectTransport(message.roomId(), transportId, dtlsParameters);
-        log.debug("ms-connect-transport for room={} transport={} user={}", message.roomId(), transportId, userId);
+        mediasoupSidecarService.connectTransport(channelId, transportId, dtlsParameters);
+        log.debug("ms-connect-transport for channel={} transport={} user={}", channelId, transportId, userId);
     }
 
     @MessageMapping("/rtc/ms-produce")
     public void handleProduce(
-            @Payload SignalMessage message,
+            @Payload MediasoupSignalMessage message,
             Principal principal) {
 
-        String userId = principal.getName();
+        String userId = resolvePrincipalName(principal, "ms-produce");
+        if (userId == null) {
+            return;
+        }
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-produce requested by {} but mediasoup sidecar is unavailable", userId);
             return;
         }
 
-        String transportId = message.targetUserId();
-        String kind = message.candidate() != null ? message.candidate() : "audio";
-        Map<String, Object> rtpParameters = message.data() != null ? message.data() : Map.of();
+        String channelId = message.channelId();
+        String transportId = message.transportId();
+        String kind = message.kind() != null ? message.kind() : "audio";
+        Map<String, Object> rtpParameters = message.rtpParameters() != null ? message.rtpParameters() : Map.of();
 
         Map<String, Object> result =
-                mediasoupSidecarService.produce(message.roomId(), transportId, kind, rtpParameters);
+                mediasoupSidecarService.produce(channelId, transportId, kind, rtpParameters, userId);
 
         if (result != null) {
             messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-producer-id", result);
 
-            if (message.roomId() != null) {
+            if (channelId != null) {
                 Map<String, Object> notification = new HashMap<>(result);
                 notification.put("producerUserId", userId);
                 notification.put("kind", kind);
+                notification.put("channelId", channelId);
 
-                rtcRoomService.getParticipants(message.roomId()).stream()
+                rtcRoomService.getParticipants(channelId).stream()
                         .filter(p -> !p.equals(userId))
                         .forEach(p -> messagingTemplate.convertAndSendToUser(
                                 p, "/queue/rtc/ms-new-producer", notification));
@@ -283,22 +431,26 @@ public class RtcSignalingController {
 
     @MessageMapping("/rtc/ms-consume")
     public void handleConsume(
-            @Payload SignalMessage message,
+            @Payload MediasoupSignalMessage message,
             Principal principal) {
 
-        String userId = principal.getName();
+        String userId = resolvePrincipalName(principal, "ms-consume");
+        if (userId == null) {
+            return;
+        }
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-consume requested by {} but mediasoup sidecar is unavailable", userId);
             return;
         }
 
-        String transportId = message.targetUserId();
-        String producerId = message.callerId();
-        Map<String, Object> rtpCapabilities = message.data() != null ? message.data() : Map.of();
+        String channelId = message.channelId();
+        String transportId = message.transportId();
+        String producerId = message.producerId();
+        Map<String, Object> rtpCapabilities = message.rtpCapabilities() != null ? message.rtpCapabilities() : Map.of();
 
         Map<String, Object> result =
-                mediasoupSidecarService.consume(message.roomId(), transportId, producerId, rtpCapabilities);
+                mediasoupSidecarService.consume(channelId, transportId, producerId, rtpCapabilities);
 
         if (result != null) {
             messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-new-consumer", result);
@@ -307,44 +459,55 @@ public class RtcSignalingController {
 
     @MessageMapping("/rtc/ms-resume-consumer")
     public void handleResumeConsumer(
-            @Payload SignalMessage message,
+            @Payload MediasoupSignalMessage message,
             Principal principal) {
 
-        String userId = principal.getName();
+        String userId = resolvePrincipalName(principal, "ms-resume-consumer");
+        if (userId == null) {
+            return;
+        }
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-resume-consumer requested by {} but mediasoup sidecar is unavailable", userId);
             return;
         }
 
-        String consumerId = message.targetUserId();
-        mediasoupSidecarService.resumeConsumer(message.roomId(), consumerId);
-        log.debug("ms-resume-consumer for room={} consumer={} user={}", message.roomId(), consumerId, userId);
+        String channelId = message.channelId();
+        String consumerId = message.consumerId();
+        mediasoupSidecarService.resumeConsumer(channelId, consumerId);
+        log.debug("ms-resume-consumer for channel={} consumer={} user={}", channelId, consumerId, userId);
     }
 
     @MessageMapping("/rtc/ms-close-producer")
     public void handleCloseProducer(
-            @Payload SignalMessage message,
+            @Payload MediasoupSignalMessage message,
             Principal principal) {
 
-        String userId = principal.getName();
+        String userId = resolvePrincipalName(principal, "ms-close-producer");
+        if (userId == null) {
+            return;
+        }
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-close-producer requested by {} but mediasoup sidecar is unavailable", userId);
             return;
         }
 
-        String producerId = message.targetUserId();
-        mediasoupSidecarService.closeProducer(message.roomId(), producerId);
-        log.debug("ms-close-producer for room={} producer={} user={}", message.roomId(), producerId, userId);
+        String channelId = message.channelId();
+        String producerId = message.producerId();
+        mediasoupSidecarService.closeProducer(channelId, producerId);
+        log.debug("ms-close-producer for channel={} producer={} user={}", channelId, producerId, userId);
     }
 
     @MessageMapping("/rtc/ms-get-producers")
     public void handleGetProducers(
-            @Payload SignalMessage message,
+            @Payload MediasoupSignalMessage message,
             Principal principal) {
 
-        String userId = principal.getName();
+        String userId = resolvePrincipalName(principal, "ms-get-producers");
+        if (userId == null) {
+            return;
+        }
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-get-producers requested by {} but mediasoup sidecar is unavailable", userId);
@@ -353,14 +516,15 @@ public class RtcSignalingController {
             return;
         }
 
-        List<Map<String, Object>> producers = mediasoupSidecarService.getProducers(message.roomId());
+        String channelId = message.channelId();
+        List<Map<String, Object>> producers = mediasoupSidecarService.getProducers(channelId);
         if (producers != null) {
             messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-producers",
-                    Map.of("producers", producers));
+                    Map.of("channelId", channelId, "producers", producers));
         } else {
-            log.warn("ms-get-producers: sidecar returned null for roomId={} user={}", message.roomId(), userId);
+            log.warn("ms-get-producers: sidecar returned null for channelId={} user={}", channelId, userId);
             messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-producers",
-                    Map.of("error", "sidecar_error"));
+                    Map.of("channelId", channelId, "error", "sidecar_error"));
         }
     }
 }

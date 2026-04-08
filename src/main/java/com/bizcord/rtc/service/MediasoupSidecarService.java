@@ -15,7 +15,6 @@ import java.util.Map;
 @Slf4j
 @Service
 public class MediasoupSidecarService {
-
     private final RestTemplate restTemplate;
     private final String baseUrl;
 
@@ -63,13 +62,15 @@ public class MediasoupSidecarService {
     }
 
     public Map<String, Object> produce(String roomId, String transportId,
-                                        String kind, Map<String, Object> rtpParameters) {
-        if (roomId == null || roomId.isBlank() || transportId == null || transportId.isBlank()) {
-            log.warn("produce called with null/blank roomId or transportId — skipping");
+                                        String kind, Map<String, Object> rtpParameters,
+                                        String userId) {
+        if (roomId == null || roomId.isBlank() || transportId == null || transportId.isBlank()
+                || userId == null || userId.isBlank()) {
+            log.warn("produce called with null/blank roomId, transportId or userId — skipping");
             return null;
         }
         return post("/rooms/" + roomId + "/transports/" + transportId + "/produce",
-                Map.of("kind", kind, "rtpParameters", rtpParameters));
+                Map.of("kind", kind, "rtpParameters", rtpParameters, "userId", userId));
     }
 
     /** GET /rooms/{roomId}/producers */

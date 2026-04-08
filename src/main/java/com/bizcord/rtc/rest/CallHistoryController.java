@@ -21,7 +21,6 @@ import java.util.Map;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class CallHistoryController {
-
     private final CallRecordService callRecordService;
     private final RtcRoomService rtcRoomService;
     private final MediasoupSidecarService mediasoupSidecarService;
