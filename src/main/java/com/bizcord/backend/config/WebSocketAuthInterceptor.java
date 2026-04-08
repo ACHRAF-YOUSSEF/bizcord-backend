@@ -25,7 +25,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     private final UserDetailsService userDetailsService;
 
     @Override
-    public Message<?> preSend(
+    public  Message<?> preSend(
             @NonNull Message<?> message,
             @NonNull MessageChannel channel
     ) {

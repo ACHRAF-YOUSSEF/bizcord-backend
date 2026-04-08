@@ -53,7 +53,6 @@ public class MessageService {
             messages = messageRepository.findLatestByChannelId(channelId, page);
         }
 
-        // reverse descending list to return ascending order
         List<Message> sorted = new ArrayList<>(messages).reversed();
         return sorted.stream().map(this::toResponse).toList();
     }
@@ -137,8 +136,6 @@ public class MessageService {
 
         return response;
     }
-
-    // --- helpers ---
 
     private User getCurrentUser(String email) {
         return userRepository.findByEmail(email)
