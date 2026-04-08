@@ -27,28 +27,47 @@ public class MediasoupSidecarService {
     }
 
     public Map<String, Object> getRouterCapabilities(String roomId) {
-        return get("/rooms/" + roomId + "/capabilities");
+        String path = (roomId != null && !roomId.isBlank())
+                ? "/rooms/" + roomId + "/capabilities"
+                : "/router/capabilities";
+        return get(path);
     }
 
     public Map<String, Object> createWebRtcTransport(String roomId, String direction) {
+        if (roomId == null || roomId.isBlank()) {
+            log.warn("createWebRtcTransport called with null/blank roomId — skipping");
+            return null;
+        }
         return post("/rooms/" + roomId + "/transports",
                 Map.of("direction", direction));
     }
 
     public void connectTransport(String roomId, String transportId,
                                   Map<String, Object> dtlsParams) {
+        if (roomId == null || roomId.isBlank() || transportId == null || transportId.isBlank()) {
+            log.warn("connectTransport called with null/blank roomId or transportId — skipping");
+            return;
+        }
         post("/rooms/" + roomId + "/transports/" + transportId + "/connect",
                 Map.of("dtlsParameters", dtlsParams));
     }
 
     public Map<String, Object> produce(String roomId, String transportId,
                                         String kind, Map<String, Object> rtpParameters) {
+        if (roomId == null || roomId.isBlank() || transportId == null || transportId.isBlank()) {
+            log.warn("produce called with null/blank roomId or transportId — skipping");
+            return null;
+        }
         return post("/rooms/" + roomId + "/transports/" + transportId + "/produce",
                 Map.of("kind", kind, "rtpParameters", rtpParameters));
     }
 
     public Map<String, Object> consume(String roomId, String transportId,
                                         String producerId, Map<String, Object> rtpCapabilities) {
+        if (roomId == null || roomId.isBlank() || transportId == null || transportId.isBlank()) {
+            log.warn("consume called with null/blank roomId or transportId — skipping");
+            return null;
+        }
         return post("/rooms/" + roomId + "/transports/" + transportId + "/consume",
                 Map.of("producerId", producerId, "rtpCapabilities", rtpCapabilities));
     }

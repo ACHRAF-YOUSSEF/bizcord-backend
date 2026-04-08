@@ -183,12 +183,18 @@ public class RtcSignalingController {
 
         if (!mediasoupSidecarService.isMediasoupAvailable()) {
             log.warn("ms-get-caps requested by {} but mediasoup sidecar is unavailable", userId);
+            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-router-caps",
+                    Map.of("error", "mediasoup_unavailable"));
             return;
         }
 
         Map<String, Object> caps = mediasoupSidecarService.getRouterCapabilities(message.roomId());
         if (caps != null) {
             messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-router-caps", caps);
+        } else {
+            log.warn("ms-get-caps: sidecar returned null for roomId={} user={}", message.roomId(), userId);
+            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-router-caps",
+                    Map.of("error", "sidecar_error"));
         }
     }
 
