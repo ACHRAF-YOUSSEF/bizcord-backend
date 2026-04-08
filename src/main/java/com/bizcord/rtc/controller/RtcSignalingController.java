@@ -13,6 +13,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -44,6 +46,7 @@ public class RtcSignalingController {
                         callerId,
                         message.roomId(),
                         null,
+                        null,
                         null));
     }
 
@@ -70,6 +73,7 @@ public class RtcSignalingController {
                             message.callerId(),
                             rejecterId,
                             message.roomId(),
+                            null,
                             null,
                             null));
         }
@@ -100,6 +104,7 @@ public class RtcSignalingController {
                             hangUpUserId,
                             message.roomId(),
                             null,
+                            null,
                             null));
         }
     }
@@ -120,6 +125,7 @@ public class RtcSignalingController {
                         senderId,
                         message.roomId(),
                         message.sdp(),
+                        null,
                         null));
     }
 
@@ -152,6 +158,7 @@ public class RtcSignalingController {
                             answererId,
                             message.roomId(),
                             message.sdp(),
+                            null,
                             null));
         }
     }
@@ -171,7 +178,8 @@ public class RtcSignalingController {
                         senderId,
                         message.roomId(),
                         null,
-                        message.candidate()));
+                        message.candidate(),
+                        null));
     }
 
     @MessageMapping("/rtc/ms-get-caps")
@@ -220,7 +228,6 @@ public class RtcSignalingController {
     }
 
     @MessageMapping("/rtc/ms-connect-transport")
-    @SuppressWarnings("unchecked")
     public void handleConnectTransport(
             @Payload SignalMessage message,
             Principal principal) {
@@ -233,9 +240,9 @@ public class RtcSignalingController {
         }
 
         String transportId = message.targetUserId();
-        Map<String, Object> dtlsParams = Map.of("raw", message.sdp() != null ? message.sdp() : "");
+        Map<String, Object> dtlsParameters = message.data() != null ? message.data() : Map.of();
 
-        mediasoupSidecarService.connectTransport(message.roomId(), transportId, dtlsParams);
+        mediasoupSidecarService.connectTransport(message.roomId(), transportId, dtlsParameters);
         log.debug("ms-connect-transport for room={} transport={} user={}", message.roomId(), transportId, userId);
     }
 
@@ -253,13 +260,24 @@ public class RtcSignalingController {
 
         String transportId = message.targetUserId();
         String kind = message.candidate() != null ? message.candidate() : "audio";
-        Map<String, Object> rtpParameters = Map.of("raw", message.sdp() != null ? message.sdp() : "");
+        Map<String, Object> rtpParameters = message.data() != null ? message.data() : Map.of();
 
         Map<String, Object> result =
                 mediasoupSidecarService.produce(message.roomId(), transportId, kind, rtpParameters);
 
         if (result != null) {
             messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-producer-id", result);
+
+            if (message.roomId() != null) {
+                Map<String, Object> notification = new HashMap<>(result);
+                notification.put("producerUserId", userId);
+                notification.put("kind", kind);
+
+                rtcRoomService.getParticipants(message.roomId()).stream()
+                        .filter(p -> !p.equals(userId))
+                        .forEach(p -> messagingTemplate.convertAndSendToUser(
+                                p, "/queue/rtc/ms-new-producer", notification));
+            }
         }
     }
 
@@ -277,7 +295,7 @@ public class RtcSignalingController {
 
         String transportId = message.targetUserId();
         String producerId = message.callerId();
-        Map<String, Object> rtpCapabilities = Map.of("raw", message.sdp() != null ? message.sdp() : "");
+        Map<String, Object> rtpCapabilities = message.data() != null ? message.data() : Map.of();
 
         Map<String, Object> result =
                 mediasoupSidecarService.consume(message.roomId(), transportId, producerId, rtpCapabilities);
@@ -286,5 +304,63 @@ public class RtcSignalingController {
             messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-new-consumer", result);
         }
     }
-}
 
+    @MessageMapping("/rtc/ms-resume-consumer")
+    public void handleResumeConsumer(
+            @Payload SignalMessage message,
+            Principal principal) {
+
+        String userId = principal.getName();
+
+        if (!mediasoupSidecarService.isMediasoupAvailable()) {
+            log.warn("ms-resume-consumer requested by {} but mediasoup sidecar is unavailable", userId);
+            return;
+        }
+
+        String consumerId = message.targetUserId();
+        mediasoupSidecarService.resumeConsumer(message.roomId(), consumerId);
+        log.debug("ms-resume-consumer for room={} consumer={} user={}", message.roomId(), consumerId, userId);
+    }
+
+    @MessageMapping("/rtc/ms-close-producer")
+    public void handleCloseProducer(
+            @Payload SignalMessage message,
+            Principal principal) {
+
+        String userId = principal.getName();
+
+        if (!mediasoupSidecarService.isMediasoupAvailable()) {
+            log.warn("ms-close-producer requested by {} but mediasoup sidecar is unavailable", userId);
+            return;
+        }
+
+        String producerId = message.targetUserId();
+        mediasoupSidecarService.closeProducer(message.roomId(), producerId);
+        log.debug("ms-close-producer for room={} producer={} user={}", message.roomId(), producerId, userId);
+    }
+
+    @MessageMapping("/rtc/ms-get-producers")
+    public void handleGetProducers(
+            @Payload SignalMessage message,
+            Principal principal) {
+
+        String userId = principal.getName();
+
+        if (!mediasoupSidecarService.isMediasoupAvailable()) {
+            log.warn("ms-get-producers requested by {} but mediasoup sidecar is unavailable", userId);
+            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-producers",
+                    Map.of("error", "mediasoup_unavailable"));
+            return;
+        }
+
+        List<Map<String, Object>> producers = mediasoupSidecarService.getProducers(message.roomId());
+        if (producers != null) {
+            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-producers",
+                    Map.of("producers", producers));
+        } else {
+            log.warn("ms-get-producers: sidecar returned null for roomId={} user={}", message.roomId(), userId);
+            messagingTemplate.convertAndSendToUser(userId, "/queue/rtc/ms-producers",
+                    Map.of("error", "sidecar_error"));
+        }
+    }
+}
