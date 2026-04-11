@@ -19,6 +19,7 @@ public final class ErrorMessages {
     public static final String SERVER_INVITE_REGEN_FORBIDDEN = "Only server owner can regenerate the invite code";
     public static final String SERVER_INVALID_INVITE_CODE = "Invalid invite code";
     public static final String SERVER_ALREADY_MEMBER = "Already a member of this server";
+    public static final String SERVER_INVITE_EXPIRED = "This invite link has expired";
     public static final String SERVER_OWNER_LEAVE_FORBIDDEN = "Server owner cannot leave their own server";
     public static final String SERVER_INVALID_IMAGE_URL = "Invalid server image URL";
 

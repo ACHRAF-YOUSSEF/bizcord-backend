@@ -16,6 +16,7 @@ public class ServerResponse {
     private String imageUrl;
     private String inviteCode;
     private String userId;
+    private LocalDateTime inviteExpiresAt;
     private List<MemberItem> members;
     private List<ChannelItem> channels;
     private List<CategoryItem> categories;
