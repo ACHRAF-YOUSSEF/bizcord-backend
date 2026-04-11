@@ -30,6 +30,8 @@ public class VoiceService {
 
     // channelId -> Set<userId> for tracking who's in each voice channel
     private final ConcurrentHashMap<String, Set<String>> voiceParticipants = new ConcurrentHashMap<>();
+    // channelId -> serverId for reverse lookup
+    private final ConcurrentHashMap<String, String> channelServerMap = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> join(String channelId, String email) {
@@ -51,12 +53,15 @@ public class VoiceService {
         }
 
         voiceParticipants.computeIfAbsent(channelId, k -> ConcurrentHashMap.newKeySet()).add(user.getId());
+        channelServerMap.put(channelId, channel.getServer().getId());
 
-        broadcast(channelId, "VOICE_JOIN", Map.of(
+        var joinPayload = Map.of(
                 "userId", user.getId(),
                 "username", user.getUsername2(),
                 "channelId", channelId
-        ));
+        );
+        broadcast(channelId, "VOICE_JOIN", joinPayload);
+        broadcastServer(channel.getServer().getId(), "VOICE_JOIN", joinPayload);
 
         return result;
     }
@@ -71,13 +76,25 @@ public class VoiceService {
             participants.remove(user.getId());
             if (participants.isEmpty()) {
                 voiceParticipants.remove(channelId);
+                channelServerMap.remove(channelId);
             }
         }
 
-        broadcast(channelId, "VOICE_LEAVE", Map.of(
+        var leavePayload = Map.of(
                 "userId", user.getId(),
                 "channelId", channelId
-        ));
+        );
+        broadcast(channelId, "VOICE_LEAVE", leavePayload);
+
+        String serverId = channelServerMap.get(channelId);
+        if (serverId == null) {
+            // Channel might have been cleaned up, look it up
+            channelRepository.findById(channelId).ifPresent(ch ->
+                    broadcastServer(ch.getServer().getId(), "VOICE_LEAVE", leavePayload)
+            );
+        } else {
+            broadcastServer(serverId, "VOICE_LEAVE", leavePayload);
+        }
     }
 
     public Map<String, Object> createTransport(String channelId, String email) {
@@ -150,6 +167,28 @@ public class VoiceService {
         return voiceParticipants.getOrDefault(channelId, Set.of());
     }
 
+    public Map<String, List<Map<String, String>>> getServerVoiceParticipants(String serverId) {
+        Map<String, List<Map<String, String>>> result = new java.util.HashMap<>();
+        for (var entry : channelServerMap.entrySet()) {
+            if (serverId.equals(entry.getValue())) {
+                String chId = entry.getKey();
+                Set<String> userIds = voiceParticipants.get(chId);
+                if (userIds != null && !userIds.isEmpty()) {
+                    List<Map<String, String>> list = new java.util.ArrayList<>();
+                    for (String uid : userIds) {
+                        userRepository.findById(uid).ifPresent(u ->
+                                list.add(Map.of("userId", u.getId(), "username", u.getUsername2()))
+                        );
+                    }
+                    if (!list.isEmpty()) {
+                        result.put(chId, list);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
     private User getUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
@@ -172,5 +211,9 @@ public class VoiceService {
 
     private void broadcast(String channelId, String type, Object data) {
         messagingTemplate.convertAndSend("/topic/voice/" + channelId, new WebSocketMessage(type, data));
+    }
+
+    private void broadcastServer(String serverId, String type, Object data) {
+        messagingTemplate.convertAndSend("/topic/server/" + serverId + "/voice", new WebSocketMessage(type, data));
     }
 }
