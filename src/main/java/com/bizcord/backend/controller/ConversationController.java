@@ -3,6 +3,7 @@ package com.bizcord.backend.controller;
 import com.bizcord.backend.config.ratelimit.RateLimit;
 import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.ConversationResponse;
+import com.bizcord.backend.service.CallService;
 import com.bizcord.backend.service.ConversationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CREATED;
 
@@ -25,6 +27,7 @@ import static org.springframework.http.HttpStatus.CREATED;
 @RequiredArgsConstructor
 public class ConversationController {
     private final ConversationService conversationService;
+    private final CallService callService;
 
     @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
     @GetMapping
@@ -57,6 +60,15 @@ public class ConversationController {
             @AuthenticationPrincipal UserDetails userDetails) {
         conversationService.deleteConversation(conversationId, userDetails.getUsername());
         return ResponseEntity.noContent().build();
+    }
+
+    @RateLimit(limit = 60, keyType = RateLimitKeyType.UID)
+    @GetMapping("/{conversationId}/active-call")
+    public ResponseEntity<Map<String, Boolean>> hasActiveCall(
+            @PathVariable String conversationId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        boolean active = callService.hasActiveCall(conversationId);
+        return ResponseEntity.ok(Map.of("active", active));
     }
 }
 

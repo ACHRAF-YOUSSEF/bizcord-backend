@@ -11,11 +11,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.security.Principal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +36,16 @@ public class CallService {
     private final ConcurrentHashMap<String, Set<String>> callParticipants = new ConcurrentHashMap<>();
     // sessionId -> [email, conversationId] for disconnect cleanup
     private final ConcurrentHashMap<String, String[]> sessionMap = new ConcurrentHashMap<>();
+    // conversationId -> Instant when the room became lonely (0-1 participants)
+    private final ConcurrentHashMap<String, Instant> roomLonelyTimestamps = new ConcurrentHashMap<>();
+
+    /**
+     * Check if there's an active call (mediasoup room with participants) for a conversation.
+     */
+    public boolean hasActiveCall(String conversationId) {
+        Set<String> participants = callParticipants.get(conversationId);
+        return participants != null && !participants.isEmpty();
+    }
 
     /**
      * Initiate a call — sends CALL_INCOMING to the other participant.
@@ -147,6 +159,7 @@ public class CallService {
         }
 
         callParticipants.computeIfAbsent(conversationId, k -> ConcurrentHashMap.newKeySet()).add(user.getId());
+        updateLonelyTimestamp(conversationId);
         if (sessionId != null) {
             sessionMap.put(sessionId, new String[]{email, conversationId});
         }
@@ -176,6 +189,9 @@ public class CallService {
             participants.remove(user.getId());
             if (participants.isEmpty()) {
                 callParticipants.remove(conversationId);
+                roomLonelyTimestamps.remove(conversationId);
+            } else {
+                updateLonelyTimestamp(conversationId);
             }
         }
 
@@ -286,6 +302,9 @@ public class CallService {
                 participants.remove(user.getId());
                 if (participants.isEmpty()) {
                     callParticipants.remove(conversationId);
+                    roomLonelyTimestamps.remove(conversationId);
+                } else {
+                    updateLonelyTimestamp(conversationId);
                 }
             }
 
@@ -297,6 +316,61 @@ public class CallService {
             log.info("Cleaned up call session for user {} in conversation {}", email, conversationId);
         } catch (Exception e) {
             log.warn("Error cleaning up call session: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Update the lonely timestamp for a room based on current participant count.
+     * If 0-1 participants, start the lonely timer; if 2+, clear it.
+     */
+    private void updateLonelyTimestamp(String conversationId) {
+        Set<String> participants = callParticipants.get(conversationId);
+        int count = participants != null ? participants.size() : 0;
+        if (count <= 1) {
+            roomLonelyTimestamps.putIfAbsent(conversationId, Instant.now());
+        } else {
+            roomLonelyTimestamps.remove(conversationId);
+        }
+    }
+
+    /**
+     * Every 60 seconds, check for rooms that have been lonely (0-1 participants) for 10+ minutes
+     * and clean them up automatically.
+     */
+    @Scheduled(fixedDelay = 60_000)
+    public void expireLonelyRooms() {
+        Instant cutoff = Instant.now().minusSeconds(600); // 10 minutes
+
+        for (var entry : roomLonelyTimestamps.entrySet()) {
+            String conversationId = entry.getKey();
+            Instant lonelySince = entry.getValue();
+
+            if (lonelySince.isBefore(cutoff)) {
+                log.info("Auto-expiring lonely call room for conversation {}", conversationId);
+
+                // Clean up mediasoup room for remaining participants
+                Set<String> remaining = callParticipants.remove(conversationId);
+                roomLonelyTimestamps.remove(conversationId);
+
+                if (remaining != null) {
+                    for (String userId : remaining) {
+                        try {
+                            mediasoupClient.leaveRoom(conversationId, userId);
+                        } catch (Exception e) {
+                            log.warn("Error removing user {} from expired room: {}", userId, e.getMessage());
+                        }
+                    }
+                }
+
+                // Remove any session mappings for this room
+                sessionMap.values().removeIf(v -> v[1].equals(conversationId));
+
+                // Broadcast CALL_ENDED to all subscribers
+                broadcast(conversationId, "CALL_ENDED", Map.of(
+                        "conversationId", conversationId,
+                        "reason", "expired"
+                ));
+            }
         }
     }
 }
