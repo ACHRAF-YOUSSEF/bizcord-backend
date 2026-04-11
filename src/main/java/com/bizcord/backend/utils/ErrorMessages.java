@@ -33,6 +33,13 @@ public final class ErrorMessages {
     public static final String MEMBER_SELF_KICK = "You cannot kick yourself";
     public static final String MEMBER_KICK_NO_PERMISSION = "You do not have permission to kick members";
     public static final String MEMBER_MODERATOR_CANNOT_KICK_ADMIN = "Moderators cannot kick the admin";
+    public static final String MEMBER_SELF_BAN = "You cannot ban yourself";
+    public static final String MEMBER_BAN_NO_PERMISSION = "You do not have permission to ban members";
+    public static final String MEMBER_MODERATOR_CANNOT_BAN_ADMIN = "Moderators cannot ban the admin";
+    public static final String MEMBER_ALREADY_BANNED = "This user is already banned";
+    public static final String MEMBER_NOT_BANNED = "This user is not banned";
+    public static final String MEMBER_UNBAN_NO_PERMISSION = "You do not have permission to unban members";
+    public static final String MEMBER_BANNED_FROM_SERVER = "You are banned from this server";
 
     // Conversation
     public static final String CONVERSATION_NOT_FOUND = "Conversation not found";
