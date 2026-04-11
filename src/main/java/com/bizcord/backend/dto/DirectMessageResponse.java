@@ -15,6 +15,7 @@ public class DirectMessageResponse {
     private UserItem user;
     private String conversationId;
     private boolean deleted;
+    private List<ReactionGroup> reactions;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -26,6 +27,15 @@ public class DirectMessageResponse {
         private String username;
         private String email;
         private String imageUrl;
+    }
+
+    @Data
+    @Builder
+    public static class ReactionGroup {
+        private String emoji;
+        private int count;
+        private List<String> userIds;
+        private boolean me;
     }
 }
 

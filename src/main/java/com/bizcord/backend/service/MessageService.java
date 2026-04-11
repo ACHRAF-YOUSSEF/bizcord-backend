@@ -8,10 +8,12 @@ import com.bizcord.backend.entity.Channel;
 import com.bizcord.backend.entity.Member;
 import com.bizcord.backend.entity.MemberRole;
 import com.bizcord.backend.entity.Message;
+import com.bizcord.backend.entity.Reaction;
 import com.bizcord.backend.entity.User;
 import com.bizcord.backend.repository.ChannelRepository;
 import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.MessageRepository;
+import com.bizcord.backend.repository.ReactionRepository;
 import com.bizcord.backend.repository.UserRepository;
 import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +38,7 @@ public class MessageService {
     private final ChannelRepository channelRepository;
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final ReactionRepository reactionRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional(readOnly = true)
@@ -55,7 +60,12 @@ public class MessageService {
 
         // reverse descending list to return ascending order
         List<Message> sorted = new ArrayList<>(messages).reversed();
-        return sorted.stream().map(this::toResponse).toList();
+
+        List<String> messageIds = sorted.stream().map(Message::getId).toList();
+        Map<String, List<Reaction>> reactionsByMessage = reactionRepository.findAllByMessageIdIn(messageIds)
+                .stream().collect(Collectors.groupingBy(r -> r.getMessage().getId()));
+
+        return sorted.stream().map(m -> toResponse(m, reactionsByMessage.getOrDefault(m.getId(), List.of()), currentUser.getId())).toList();
     }
 
     @Transactional
@@ -82,7 +92,8 @@ public class MessageService {
 
         Message saved = messageRepository.findByIdWithMemberAndUser(message.getId()).orElseThrow();
 
-        MessageResponse response = toResponse(saved);
+        List<Reaction> reactions = reactionRepository.findAllByMessageId(saved.getId());
+        MessageResponse response = toResponse(saved, reactions, currentUser.getId());
         broadcast(channelId, "NEW", response);
 
         return response;
@@ -104,7 +115,8 @@ public class MessageService {
         message.setContent(request.getContent());
         messageRepository.save(message);
 
-        MessageResponse response = toResponse(message);
+        List<Reaction> reactions = reactionRepository.findAllByMessageId(messageId);
+        MessageResponse response = toResponse(message, reactions, currentUser.getId());
         broadcast(channelId, "UPDATE", response);
 
         return response;
@@ -132,7 +144,7 @@ public class MessageService {
         message.setAttachments(new ArrayList<>());
         messageRepository.save(message);
 
-        MessageResponse response = toResponse(message);
+        MessageResponse response = toResponse(message, List.of(), currentUser.getId());
         broadcast(channelId, "DELETE", response);
 
         return response;
@@ -161,9 +173,21 @@ public class MessageService {
                 new WebSocketMessage(type, data));
     }
 
-    private MessageResponse toResponse(Message msg) {
+    private MessageResponse toResponse(Message msg, List<Reaction> reactions, String currentUserId) {
         Member member = msg.getMember();
         User user = member.getUser();
+
+        Map<String, List<Reaction>> grouped = reactions.stream()
+                .collect(Collectors.groupingBy(Reaction::getEmoji));
+
+        List<MessageResponse.ReactionGroup> reactionGroups = grouped.entrySet().stream()
+                .map(e -> MessageResponse.ReactionGroup.builder()
+                        .emoji(e.getKey())
+                        .count(e.getValue().size())
+                        .userIds(e.getValue().stream().map(r -> r.getUser().getId()).toList())
+                        .me(e.getValue().stream().anyMatch(r -> r.getUser().getId().equals(currentUserId)))
+                        .build())
+                .toList();
 
         return MessageResponse.builder()
                 .id(msg.getId())
@@ -182,6 +206,7 @@ public class MessageService {
                         .build())
                 .channelId(msg.getChannel().getId())
                 .deleted(msg.isDeleted())
+                .reactions(reactionGroups)
                 .createdAt(msg.getCreatedAt())
                 .updatedAt(msg.getUpdatedAt())
                 .build();

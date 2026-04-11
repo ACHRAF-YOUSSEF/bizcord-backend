@@ -16,6 +16,7 @@ public class MessageResponse {
     private MemberItem member;
     private String channelId;
     private boolean deleted;
+    private List<ReactionGroup> reactions;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -35,6 +36,15 @@ public class MessageResponse {
         private String name;
         private MemberRole role;
         private UserItem user;
+    }
+
+    @Data
+    @Builder
+    public static class ReactionGroup {
+        private String emoji;
+        private int count;
+        private List<String> userIds;
+        private boolean me;
     }
 }
 
