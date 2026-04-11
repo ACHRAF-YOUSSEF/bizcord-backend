@@ -11,12 +11,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"member", "conversation"})
-@ToString(exclude = {"member", "conversation"})
+@EqualsAndHashCode(exclude = {"user", "conversation"})
+@ToString(exclude = {"user", "conversation"})
 @Entity(name = "bizcord_direct_messages")
 @EntityListeners(AuditingEntityListener.class)
 public class DirectMessage {
@@ -31,7 +32,7 @@ public class DirectMessage {
     private List<String> attachments = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Member member;
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Conversation conversation;

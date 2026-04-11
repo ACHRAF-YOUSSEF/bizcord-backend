@@ -55,6 +55,18 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Channel> channels = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DirectMessage> directMessages = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user1")
+    private List<Conversation> conversationsInitiated = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user2")
+    private List<Conversation> conversationsReceived = new ArrayList<>();
+
     @CreatedDate
     private LocalDateTime createdAt;
 

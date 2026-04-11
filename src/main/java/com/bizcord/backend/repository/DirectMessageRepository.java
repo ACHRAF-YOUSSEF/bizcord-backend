@@ -12,8 +12,7 @@ import java.util.Optional;
 public interface DirectMessageRepository extends JpaRepository<DirectMessage, String> {
     @Query("""
             select dm from bizcord_direct_messages dm
-            join fetch dm.member m
-            join fetch m.user
+            join fetch dm.user u
             where dm.conversation.id = :conversationId
             order by dm.createdAt desc
             """)
@@ -21,8 +20,7 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, St
 
     @Query("""
             select dm from bizcord_direct_messages dm
-            join fetch dm.member m
-            join fetch m.user
+            join fetch dm.user u
             where dm.conversation.id = :conversationId
               and dm.createdAt < :cursor
             order by dm.createdAt desc
@@ -31,10 +29,9 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, St
 
     @Query("""
             select dm from bizcord_direct_messages dm
-            join fetch dm.member m
-            join fetch m.user
+            join fetch dm.user u
             where dm.id = :id
             """)
-    Optional<DirectMessage> findByIdWithMemberAndUser(String id);
+    Optional<DirectMessage> findByIdWithUser(String id);
 }
 

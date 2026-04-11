@@ -37,7 +37,6 @@ public final class ErrorMessages {
     // Conversation
     public static final String CONVERSATION_NOT_FOUND = "Conversation not found";
     public static final String CONVERSATION_NOT_A_PARTICIPANT = "You are not a participant of this conversation";
-    public static final String CONVERSATION_NO_COMMON_SERVER = "No common server found between the two users";
     public static final String CONVERSATION_SELF_NOT_ALLOWED = "You cannot start a conversation with yourself";
 
     // Direct Message
@@ -60,4 +59,14 @@ public final class ErrorMessages {
     public static final String CHANNEL_CREATE_FORBIDDEN = "You do not have permission to create channels";
     public static final String CHANNEL_EDIT_FORBIDDEN = "You do not have permission to edit channels";
     public static final String CHANNEL_DELETE_FORBIDDEN = "You do not have permission to delete channels";
+
+    // Category
+    public static final String CATEGORY_NOT_FOUND = "Category not found";
+    public static final String CATEGORY_WRONG_SERVER = "Category does not belong to this server";
+    public static final String CATEGORY_CREATE_FORBIDDEN = "You do not have permission to create categories";
+    public static final String CATEGORY_EDIT_FORBIDDEN = "You do not have permission to edit categories";
+    public static final String CATEGORY_DELETE_FORBIDDEN = "You do not have permission to delete categories";
+    public static final String CATEGORY_DEFAULT_DELETE = "Cannot delete the default category";
+    public static final String CATEGORY_LAST_DELETE = "Cannot delete the last category";
+    public static final String CATEGORY_REORDER_FORBIDDEN = "You do not have permission to reorder categories";
 }

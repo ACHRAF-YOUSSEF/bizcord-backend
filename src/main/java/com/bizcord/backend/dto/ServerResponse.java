@@ -18,6 +18,7 @@ public class ServerResponse {
     private String userId;
     private List<MemberItem> members;
     private List<ChannelItem> channels;
+    private List<CategoryItem> categories;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -51,6 +52,18 @@ public class ServerResponse {
         private ChannelType type;
         private String serverId;
         private String userId;
+        private String categoryId;
+        private int position;
+    }
+
+    @Data
+    @Builder
+    public static class CategoryItem {
+        private String id;
+        private String name;
+        private int position;
+        private String serverId;
+        private boolean defaultCategory;
     }
 }
 

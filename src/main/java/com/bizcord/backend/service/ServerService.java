@@ -4,6 +4,7 @@ import com.bizcord.backend.dto.ServerCreateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.dto.ServerUpdateRequest;
 import com.bizcord.backend.entity.*;
+import com.bizcord.backend.repository.ChannelCategoryRepository;
 import com.bizcord.backend.repository.ChannelRepository;
 import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.ServerRepository;
@@ -30,6 +31,7 @@ public class ServerService {
     private final UserRepository userRepository;
     private final MemberRepository memberRepository;
     private final ChannelRepository channelRepository;
+    private final ChannelCategoryRepository categoryRepository;
 
     @Transactional(readOnly = true)
     public List<ServerResponse> getServersThatTheCurrentUserIsMemberOf(String email) {
@@ -47,11 +49,20 @@ public class ServerService {
                 .stream()
                 .collect(java.util.stream.Collectors.groupingBy(channel -> channel.getServer().getId()));
 
+        // Load all categories for all servers in one batch
+        var allCategories = new java.util.ArrayList<ChannelCategory>();
+        for (String sid : serverIds) {
+            allCategories.addAll(categoryRepository.findAllByServerIdWithServer(sid));
+        }
+        var categoriesByServerId = allCategories.stream()
+                .collect(java.util.stream.Collectors.groupingBy(cat -> cat.getServer().getId()));
+
         return servers.stream()
-                .map(server -> toResponse(
+                .map(server -> ChannelCategoryService.toResponse(
                         server,
                         membersByServerId.getOrDefault(server.getId(), List.of()),
-                        channelsByServerId.getOrDefault(server.getId(), List.of())
+                        channelsByServerId.getOrDefault(server.getId(), List.of()),
+                        categoriesByServerId.getOrDefault(server.getId(), List.of())
                 ))
                 .toList();
     }
@@ -66,10 +77,7 @@ public class ServerService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND);
         }
 
-        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
-        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
-
-        return toResponse(server, members, channels);
+        return buildFullResponse(serverId, server);
     }
 
     @Transactional
@@ -92,19 +100,36 @@ public class ServerService {
                 .server(server)
                 .build();
 
+        ChannelCategory textCategory = ChannelCategory.builder()
+                .name("Text Channels")
+                .position(0)
+                .server(server)
+                .defaultCategory(true)
+                .build();
+
+        ChannelCategory voiceCategory = ChannelCategory.builder()
+                .name("Voice Channels")
+                .position(1)
+                .server(server)
+                .build();
+
         Channel generalChannel = Channel
                 .builder()
                 .name("general")
                 .type(ChannelType.TEXT)
+                .position(0)
                 .user(currentUser)
                 .server(server)
+                .category(textCategory)
                 .build();
 
         server.getMembers().add(ownerMember);
         server.getChannels().add(generalChannel);
+        server.getCategories().add(textCategory);
+        server.getCategories().add(voiceCategory);
 
         Server saved = serverRepository.save(server);
-        return toResponse(saved, List.of(ownerMember), List.of(generalChannel));
+        return ChannelCategoryService.toResponse(saved, List.of(ownerMember), List.of(generalChannel), List.of(textCategory, voiceCategory));
     }
 
     @Transactional
@@ -124,9 +149,7 @@ public class ServerService {
             server.setImageUrl(normalizeServerImageUrl(request.getImageUrl()));
         }
 
-        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
-        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
-        return toResponse(server, members, channels);
+        return buildFullResponse(serverId, server);
     }
 
     @Transactional(readOnly = true)
@@ -135,10 +158,7 @@ public class ServerService {
         Server server = serverRepository.findByInviteCodeWithOwner(inviteCode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_INVALID_INVITE_CODE));
 
-        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(server.getId());
-        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(server.getId());
-
-        return toResponse(server, members, channels);
+        return buildFullResponse(server.getId(), server);
     }
 
     @Transactional
@@ -164,10 +184,7 @@ public class ServerService {
         server.getMembers().add(newMember);
         serverRepository.saveAndFlush(server);
 
-        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(server.getId());
-        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(server.getId());
-
-        return toResponse(server, members, channels);
+        return buildFullResponse(server.getId(), server);
     }
 
     @Transactional
@@ -181,10 +198,7 @@ public class ServerService {
 
         server.setInviteCode(generateInviteCode());
 
-        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
-        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
-
-        return toResponse(server, members, channels);
+        return buildFullResponse(serverId, server);
     }
 
     @Transactional
@@ -203,10 +217,7 @@ public class ServerService {
         memberRepository.delete(member);
         memberRepository.flush();
 
-        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
-        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
-
-        return toResponse(server, members, channels);
+        return buildFullResponse(serverId, server);
     }
 
     @Transactional
@@ -297,37 +308,10 @@ public class ServerService {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.SERVER_INVALID_IMAGE_URL);
     }
 
-    private ServerResponse toResponse(Server server, List<Member> members, List<Channel> channels) {
-        return ServerResponse.builder()
-                .id(server.getId())
-                .name(server.getName())
-                .imageUrl(server.getImageUrl())
-                .inviteCode(server.getInviteCode())
-                .userId(server.getUser().getId())
-                .members(members.stream().map(member -> ServerResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .serverId(member.getServer().getId())
-                        .user(ServerResponse.UserItem.builder()
-                                .id(member.getUser().getId())
-                                .username(member.getUser().getUsername2())
-                                .email(member.getUser().getEmail())
-                                .fullName(member.getUser().getFullName())
-                                .imageUrl(member.getUser().getImageUrl())
-                                .createdAt(member.getUser().getCreatedAt())
-                                .updatedAt(member.getUser().getUpdatedAt())
-                                .build())
-                        .build()).toList())
-                .channels(channels.stream().map(channel -> ServerResponse.ChannelItem.builder()
-                        .id(channel.getId())
-                        .name(channel.getName())
-                        .type(channel.getType())
-                        .userId(channel.getUser().getId())
-                        .serverId(channel.getServer().getId())
-                        .build()).toList())
-                .createdAt(server.getCreatedAt())
-                .updatedAt(server.getUpdatedAt())
-                .build();
+    private ServerResponse buildFullResponse(String serverId, Server server) {
+        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
+        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
+        List<ChannelCategory> categories = categoryRepository.findAllByServerIdWithServer(serverId);
+        return ChannelCategoryService.toResponse(server, members, channels, categories);
     }
 }

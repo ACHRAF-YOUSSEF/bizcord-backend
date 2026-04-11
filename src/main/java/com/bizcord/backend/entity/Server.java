@@ -20,8 +20,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"user", "members", "channels"})
-@ToString(exclude = {"user", "members", "channels"})
+@EqualsAndHashCode(exclude = {"user", "members", "channels", "categories"})
+@ToString(exclude = {"user", "members", "channels", "categories"})
 @Entity(name = "bizcord_servers")
 @EntityListeners(AuditingEntityListener.class)
 public class Server {
@@ -48,6 +48,11 @@ public class Server {
     @Builder.Default
     @OneToMany(mappedBy = "server", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Channel> channels = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "server", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("position ASC")
+    private List<ChannelCategory> categories = new ArrayList<>();
 
     @CreatedDate
     private LocalDateTime createdAt;

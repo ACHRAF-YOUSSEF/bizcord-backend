@@ -6,7 +6,6 @@ import com.bizcord.backend.dto.DirectMessageUpdateRequest;
 import com.bizcord.backend.dto.WebSocketMessage;
 import com.bizcord.backend.entity.Conversation;
 import com.bizcord.backend.entity.DirectMessage;
-import com.bizcord.backend.entity.Member;
 import com.bizcord.backend.entity.User;
 import com.bizcord.backend.repository.ConversationRepository;
 import com.bizcord.backend.repository.DirectMessageRepository;
@@ -36,7 +35,7 @@ public class DirectMessageService {
     @Transactional(readOnly = true)
     public List<DirectMessageResponse> getMessages(String conversationId, String cursor, String email) {
         User currentUser = getCurrentUser(email);
-        Conversation conversation = getConversationWithMembers(conversationId);
+        Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
 
         List<DirectMessage> messages;
@@ -59,7 +58,7 @@ public class DirectMessageService {
     @Transactional
     public DirectMessageResponse createMessage(String conversationId, DirectMessageCreateRequest request, String email) {
         User currentUser = getCurrentUser(email);
-        Conversation conversation = getConversationWithMembers(conversationId);
+        Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
 
         boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
@@ -69,18 +68,16 @@ public class DirectMessageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.DIRECT_MESSAGE_EMPTY);
         }
 
-        Member senderMember = getSenderMember(conversation, currentUser);
-
         DirectMessage message = DirectMessage.builder()
                 .content(request.getContent())
                 .attachments(hasAttachments ? request.getAttachments() : new ArrayList<>())
-                .member(senderMember)
+                .user(currentUser)
                 .conversation(conversation)
                 .build();
 
         directMessageRepository.save(message);
 
-        DirectMessage saved = directMessageRepository.findByIdWithMemberAndUser(message.getId())
+        DirectMessage saved = directMessageRepository.findByIdWithUser(message.getId())
                 .orElseThrow();
 
         DirectMessageResponse response = toResponse(saved);
@@ -92,13 +89,13 @@ public class DirectMessageService {
     @Transactional
     public DirectMessageResponse updateMessage(String conversationId, String messageId, DirectMessageUpdateRequest request, String email) {
         User currentUser = getCurrentUser(email);
-        Conversation conversation = getConversationWithMembers(conversationId);
+        Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
 
-        DirectMessage message = directMessageRepository.findByIdWithMemberAndUser(messageId)
+        DirectMessage message = directMessageRepository.findByIdWithUser(messageId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.DIRECT_MESSAGE_NOT_FOUND));
 
-        if (!message.getMember().getUser().getId().equals(currentUser.getId())) {
+        if (!message.getUser().getId().equals(currentUser.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.DIRECT_MESSAGE_NOT_OWNER);
         }
 
@@ -114,13 +111,13 @@ public class DirectMessageService {
     @Transactional
     public DirectMessageResponse deleteMessage(String conversationId, String messageId, String email) {
         User currentUser = getCurrentUser(email);
-        Conversation conversation = getConversationWithMembers(conversationId);
+        Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
 
-        DirectMessage message = directMessageRepository.findByIdWithMemberAndUser(messageId)
+        DirectMessage message = directMessageRepository.findByIdWithUser(messageId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.DIRECT_MESSAGE_NOT_FOUND));
 
-        if (!message.getMember().getUser().getId().equals(currentUser.getId())) {
+        if (!message.getUser().getId().equals(currentUser.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.DIRECT_MESSAGE_NOT_OWNER);
         }
 
@@ -140,24 +137,17 @@ public class DirectMessageService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
     }
 
-    private Conversation getConversationWithMembers(String conversationId) {
-        return conversationRepository.findByIdWithMembers(conversationId)
+    private Conversation getConversationWithUsers(String conversationId) {
+        return conversationRepository.findByIdWithUsers(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
     }
 
     private void assertParticipant(Conversation conversation, User user) {
-        boolean isParticipant = conversation.getMember1().getUser().getId().equals(user.getId())
-                || conversation.getMember2().getUser().getId().equals(user.getId());
+        boolean isParticipant = conversation.getUser1().getId().equals(user.getId())
+                || conversation.getUser2().getId().equals(user.getId());
         if (!isParticipant) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CONVERSATION_NOT_A_PARTICIPANT);
         }
-    }
-
-    private Member getSenderMember(Conversation conversation, User user) {
-        if (conversation.getMember1().getUser().getId().equals(user.getId())) {
-            return conversation.getMember1();
-        }
-        return conversation.getMember2();
     }
 
     private void broadcast(String conversationId, String type, DirectMessageResponse data) {
@@ -167,24 +157,18 @@ public class DirectMessageService {
     }
 
     private DirectMessageResponse toResponse(DirectMessage dm) {
-        Member member = dm.getMember();
-        User user = member.getUser();
+        User user = dm.getUser();
 
         return DirectMessageResponse.builder()
                 .id(dm.getId())
                 .content(dm.getContent())
                 .attachments(dm.getAttachments())
-                .member(DirectMessageResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .user(DirectMessageResponse.UserItem.builder()
-                                .id(user.getId())
-                                .fullName(user.getFullName())
-                                .username(user.getUsername2())
-                                .email(user.getEmail())
-                                .imageUrl(user.getImageUrl())
-                                .build())
+                .user(DirectMessageResponse.UserItem.builder()
+                        .id(user.getId())
+                        .fullName(user.getFullName())
+                        .username(user.getUsername2())
+                        .email(user.getEmail())
+                        .imageUrl(user.getImageUrl())
                         .build())
                 .conversationId(dm.getConversation().getId())
                 .deleted(dm.isDeleted())
