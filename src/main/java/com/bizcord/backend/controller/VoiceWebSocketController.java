@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
@@ -22,8 +23,9 @@ public class VoiceWebSocketController {
     @SendToUser("/queue/voice")
     public Map<String, Object> join(
             @DestinationVariable String channelId,
-            Principal principal) {
-        Map<String, Object> result = voiceService.join(channelId, principal.getName());
+            Principal principal,
+            SimpMessageHeaderAccessor headerAccessor) {
+        Map<String, Object> result = voiceService.join(channelId, principal.getName(), headerAccessor.getSessionId());
         result.put("action", "joined");
         return result;
     }

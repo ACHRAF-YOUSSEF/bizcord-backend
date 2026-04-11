@@ -9,16 +9,21 @@ import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.UserRepository;
 import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VoiceService {
@@ -32,12 +37,20 @@ public class VoiceService {
     private final ConcurrentHashMap<String, Set<String>> voiceParticipants = new ConcurrentHashMap<>();
     // channelId -> serverId for reverse lookup
     private final ConcurrentHashMap<String, String> channelServerMap = new ConcurrentHashMap<>();
+    // sessionId -> [email, channelId] for disconnect cleanup
+    private final ConcurrentHashMap<String, String[]> sessionMap = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> join(String channelId, String email) {
+    public Map<String, Object> join(String channelId, String email, String sessionId) {
         User user = getUser(email);
         Channel channel = getVoiceChannel(channelId);
         assertMember(channel.getServer().getId(), user.getId());
+
+        // Clean up any previous voice session for this user
+        sessionMap.values().removeIf(v -> v[0].equals(email));
+        for (var entry : voiceParticipants.entrySet()) {
+            entry.getValue().remove(user.getId());
+        }
 
         Map<String, Object> result = new java.util.HashMap<>(mediasoupClient.joinRoom(channelId, user.getId()));
 
@@ -54,6 +67,9 @@ public class VoiceService {
 
         voiceParticipants.computeIfAbsent(channelId, k -> ConcurrentHashMap.newKeySet()).add(user.getId());
         channelServerMap.put(channelId, channel.getServer().getId());
+        if (sessionId != null) {
+            sessionMap.put(sessionId, new String[]{email, channelId});
+        }
 
         var joinPayload = Map.of(
                 "userId", user.getId(),
@@ -70,6 +86,9 @@ public class VoiceService {
         User user = getUser(email);
 
         mediasoupClient.leaveRoom(channelId, user.getId());
+
+        // Clean up session tracking
+        sessionMap.values().removeIf(v -> v[0].equals(email) && v[1].equals(channelId));
 
         Set<String> participants = voiceParticipants.get(channelId);
         if (participants != null) {
@@ -215,5 +234,48 @@ public class VoiceService {
 
     private void broadcastServer(String serverId, String type, Object data) {
         messagingTemplate.convertAndSend("/topic/server/" + serverId + "/voice", new WebSocketMessage(type, data));
+    }
+
+    @EventListener
+    public void handleSessionDisconnect(SessionDisconnectEvent event) {
+        String sessionId = event.getSessionId();
+        String[] info = sessionMap.remove(sessionId);
+        if (info == null) return;
+
+        String email = info[0];
+        String channelId = info[1];
+
+        try {
+            User user = getUser(email);
+            mediasoupClient.leaveRoom(channelId, user.getId());
+
+            Set<String> participants = voiceParticipants.get(channelId);
+            if (participants != null) {
+                participants.remove(user.getId());
+                if (participants.isEmpty()) {
+                    voiceParticipants.remove(channelId);
+                    channelServerMap.remove(channelId);
+                }
+            }
+
+            var leavePayload = Map.of(
+                    "userId", user.getId(),
+                    "channelId", channelId
+            );
+            broadcast(channelId, "VOICE_LEAVE", leavePayload);
+
+            String serverId = channelServerMap.get(channelId);
+            if (serverId == null) {
+                channelRepository.findById(channelId).ifPresent(ch ->
+                        broadcastServer(ch.getServer().getId(), "VOICE_LEAVE", leavePayload)
+                );
+            } else {
+                broadcastServer(serverId, "VOICE_LEAVE", leavePayload);
+            }
+
+            log.info("Cleaned up voice session for user {} in channel {}", email, channelId);
+        } catch (Exception e) {
+            log.warn("Error cleaning up voice session: {}", e.getMessage());
+        }
     }
 }
