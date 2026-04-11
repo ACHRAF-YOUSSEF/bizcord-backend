@@ -15,11 +15,11 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"server", "user", "category"})
-@ToString(exclude = {"server", "user", "category"})
-@Entity(name = "bizcord_channels")
+@EqualsAndHashCode(exclude = {"server", "channels"})
+@ToString(exclude = {"server", "channels"})
+@Entity(name = "bizcord_channel_categories")
 @EntityListeners(AuditingEntityListener.class)
-public class Channel {
+public class ChannelCategory {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
@@ -27,23 +27,18 @@ public class Channel {
     @NotBlank
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    private ChannelType type = ChannelType.TEXT;
-
     private int position;
+
+    @Builder.Default
+    private boolean defaultCategory = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Server server;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    private ChannelCategory category;
-
     @Builder.Default
-    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Message> messages = new ArrayList<>();
+    @OneToMany(mappedBy = "category", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OrderBy("position ASC")
+    private List<Channel> channels = new ArrayList<>();
 
     @CreatedDate
     private LocalDateTime createdAt;

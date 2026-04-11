@@ -19,7 +19,9 @@ public interface ChannelRepository extends JpaRepository<Channel, String> {
 			select c from bizcord_channels c
 			join fetch c.user
 			join fetch c.server
+			left join fetch c.category
 			where c.server.id = :serverId
+			order by c.position asc
 			""")
 	List<Channel> findAllByServerIdWithUserAndServer(String serverId);
 
@@ -27,7 +29,9 @@ public interface ChannelRepository extends JpaRepository<Channel, String> {
 			select c from bizcord_channels c
 			join fetch c.user
 			join fetch c.server
+			left join fetch c.category
 			where c.server.id in :serverIds
+			order by c.position asc
 			""")
 	List<Channel> findAllByServerIdInWithUserAndServer(List<String> serverIds);
 }

@@ -44,9 +44,9 @@ public class ConversationController {
     @RateLimit(limit = 20, keyType = RateLimitKeyType.UID)
     @PostMapping
     public ResponseEntity<ConversationResponse> getOrCreateConversation(
-            @RequestParam String memberId,
+            @RequestParam String userId,
             @AuthenticationPrincipal UserDetails userDetails) {
-        ConversationResponse response = conversationService.getOrCreateConversation(memberId, userDetails.getUsername());
+        ConversationResponse response = conversationService.getOrCreateConversation(userId, userDetails.getUsername());
         return ResponseEntity.status(CREATED).body(response);
     }
 

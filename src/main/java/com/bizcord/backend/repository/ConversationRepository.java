@@ -11,11 +11,9 @@ public interface ConversationRepository extends JpaRepository<Conversation, Stri
 
     @Query("""
             select c from bizcord_conversations c
-            join fetch c.member1 m1
-            join fetch m1.user u1
-            join fetch c.member2 m2
-            join fetch m2.user u2
-            where (m1.user.id = :userId or m2.user.id = :userId)
+            join fetch c.user1 u1
+            join fetch c.user2 u2
+            where (u1.id = :userId or u2.id = :userId)
             and :userId not member of c.deletedByUserIds
             order by c.updatedAt desc
             """)
@@ -23,23 +21,19 @@ public interface ConversationRepository extends JpaRepository<Conversation, Stri
 
     @Query("""
             select c from bizcord_conversations c
-            join fetch c.member1 m1
-            join fetch m1.user u1
-            join fetch c.member2 m2
-            join fetch m2.user u2
-            where (m1.user.id = :userId1 and m2.user.id = :userId2)
-               or (m1.user.id = :userId2 and m2.user.id = :userId1)
+            join fetch c.user1 u1
+            join fetch c.user2 u2
+            where (u1.id = :userId1 and u2.id = :userId2)
+               or (u1.id = :userId2 and u2.id = :userId1)
             """)
     Optional<Conversation> findByUserIds(String userId1, String userId2);
 
     @Query("""
             select c from bizcord_conversations c
-            join fetch c.member1 m1
-            join fetch m1.user u1
-            join fetch c.member2 m2
-            join fetch m2.user u2
+            join fetch c.user1 u1
+            join fetch c.user2 u2
             where c.id = :id
             """)
-    Optional<Conversation> findByIdWithMembers(String id);
+    Optional<Conversation> findByIdWithUsers(String id);
 }
 

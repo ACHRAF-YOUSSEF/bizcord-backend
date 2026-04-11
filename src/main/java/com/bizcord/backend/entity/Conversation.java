@@ -6,6 +6,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -16,8 +17,8 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"member1", "member2"})
-@ToString(exclude = {"member1", "member2"})
+@EqualsAndHashCode(exclude = {"user1", "user2"})
+@ToString(exclude = {"user1", "user2"})
 @Entity(name = "bizcord_conversations")
 @EntityListeners(AuditingEntityListener.class)
 public class Conversation {
@@ -26,10 +27,10 @@ public class Conversation {
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Member member1;
+    private User user1;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Member member2;
+    private User user2;
 
     @Builder.Default
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)

@@ -2,10 +2,8 @@ package com.bizcord.backend.service;
 
 import com.bizcord.backend.dto.ConversationResponse;
 import com.bizcord.backend.entity.Conversation;
-import com.bizcord.backend.entity.Member;
 import com.bizcord.backend.entity.User;
 import com.bizcord.backend.repository.ConversationRepository;
-import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.UserRepository;
 import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -16,14 +14,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ConversationService {
     private final ConversationRepository conversationRepository;
-    private final MemberRepository memberRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -42,7 +37,7 @@ public class ConversationService {
         User currentUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
-        Conversation conversation = conversationRepository.findByIdWithMembers(conversationId)
+        Conversation conversation = conversationRepository.findByIdWithUsers(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
 
         assertParticipant(conversation, currentUser);
@@ -55,79 +50,69 @@ public class ConversationService {
     }
 
     @Transactional
-    public ConversationResponse getOrCreateConversation(String memberId, String email) {
+    public ConversationResponse getOrCreateConversation(String targetUserId, String email) {
         User currentUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
-        Member targetMember = memberRepository.findByIdWithUserAndServer(memberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.MEMBER_NOT_FOUND));
-
-        User targetUser = targetMember.getUser();
-
-        if (currentUser.getId().equals(targetUser.getId())) {
+        if (currentUser.getId().equals(targetUserId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.CONVERSATION_SELF_NOT_ALLOWED);
         }
+
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.USER_NOT_FOUND));
 
         Optional<Conversation> existing = conversationRepository.findByUserIds(currentUser.getId(), targetUser.getId());
         if (existing.isPresent()) {
             Conversation conv = existing.get();
             if (conv.getDeletedByUserIds().remove(currentUser.getId())) {
                 conversationRepository.save(conv);
-                conv = conversationRepository.findByIdWithMembers(conv.getId()).orElseThrow();
+                conv = conversationRepository.findByIdWithUsers(conv.getId()).orElseThrow();
             }
             return toResponse(conv);
         }
 
-        List<Member> currentUserMembers = memberRepository.findAllByUserIdWithUserAndServer(currentUser.getId());
-        List<Member> targetUserMembers = memberRepository.findAllByUserIdWithUserAndServer(targetUser.getId());
-
-        Set<String> targetUserServerIds = targetUserMembers.stream()
-                .map(m -> m.getServer().getId())
-                .collect(Collectors.toSet());
-
-        Member currentUserMemberInCommonServer = currentUserMembers.stream()
-                .filter(m -> targetUserServerIds.contains(m.getServer().getId()))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.CONVERSATION_NO_COMMON_SERVER));
-
-        String commonServerId = currentUserMemberInCommonServer.getServer().getId();
-
-        Member targetUserMemberInCommonServer = targetUserMembers.stream()
-                .filter(m -> m.getServer().getId().equals(commonServerId))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.CONVERSATION_NO_COMMON_SERVER));
-
         Conversation conversation = Conversation.builder()
-                .member1(currentUserMemberInCommonServer)
-                .member2(targetUserMemberInCommonServer)
+                .user1(currentUser)
+                .user2(targetUser)
                 .build();
 
         conversationRepository.save(conversation);
 
-        Conversation saved = conversationRepository.findByIdWithMembers(conversation.getId())
+        Conversation saved = conversationRepository.findByIdWithUsers(conversation.getId())
                 .orElseThrow();
 
         return toResponse(saved);
     }
 
+    @Transactional
+    public void deleteConversation(String conversationId, String email) {
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
+
+        Conversation conversation = conversationRepository.findByIdWithUsers(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
+
+        assertParticipant(conversation, currentUser);
+
+        conversation.getDeletedByUserIds().add(currentUser.getId());
+        conversationRepository.save(conversation);
+    }
+
+    private void assertParticipant(Conversation conversation, User user) {
+        boolean isParticipant = conversation.getUser1().getId().equals(user.getId())
+                || conversation.getUser2().getId().equals(user.getId());
+        if (!isParticipant) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CONVERSATION_NOT_A_PARTICIPANT);
+        }
+    }
+
     private ConversationResponse toResponse(Conversation c) {
         return ConversationResponse.builder()
                 .id(c.getId())
-                .member1(toMemberItem(c.getMember1()))
-                .member2(toMemberItem(c.getMember2()))
+                .user1(toUserItem(c.getUser1()))
+                .user2(toUserItem(c.getUser2()))
                 .createdAt(c.getCreatedAt())
                 .updatedAt(c.getUpdatedAt())
-                .build();
-    }
-
-    private ConversationResponse.MemberItem toMemberItem(Member member) {
-        return ConversationResponse.MemberItem.builder()
-                .id(member.getId())
-                .name(member.getName())
-                .role(member.getRole())
-                .createdAt(member.getCreatedAt())
-                .updatedAt(member.getUpdatedAt())
-                .user(toUserItem(member.getUser()))
                 .build();
     }
 
@@ -141,28 +126,5 @@ public class ConversationService {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
-    }
-
-    @Transactional
-    public void deleteConversation(String conversationId, String email) {
-        User currentUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
-
-        Conversation conversation = conversationRepository.findByIdWithMembers(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
-
-        assertParticipant(conversation, currentUser);
-
-        // Soft-delete: mark this user as having left the conversation view
-        conversation.getDeletedByUserIds().add(currentUser.getId());
-        conversationRepository.save(conversation);
-    }
-
-    private void assertParticipant(Conversation conversation, User user) {
-        boolean isParticipant = conversation.getMember1().getUser().getId().equals(user.getId())
-                || conversation.getMember2().getUser().getId().equals(user.getId());
-        if (!isParticipant) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CONVERSATION_NOT_A_PARTICIPANT);
-        }
     }
 }

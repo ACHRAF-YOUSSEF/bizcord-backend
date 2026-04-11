@@ -2,11 +2,8 @@ package com.bizcord.backend.service;
 
 import com.bizcord.backend.dto.MemberRoleUpdateRequest;
 import com.bizcord.backend.dto.ServerResponse;
-import com.bizcord.backend.entity.Channel;
-import com.bizcord.backend.entity.Member;
-import com.bizcord.backend.entity.MemberRole;
-import com.bizcord.backend.entity.Server;
-import com.bizcord.backend.entity.User;
+import com.bizcord.backend.entity.*;
+import com.bizcord.backend.repository.ChannelCategoryRepository;
 import com.bizcord.backend.repository.ChannelRepository;
 import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.ServerRepository;
@@ -27,6 +24,7 @@ public class MemberService {
     private final UserRepository userRepository;
     private final ServerRepository serverRepository;
     private final ChannelRepository channelRepository;
+    private final ChannelCategoryRepository categoryRepository;
 
     @Transactional
     public ServerResponse updateMemberRole(String memberId, String serverId, MemberRoleUpdateRequest request, String email) {
@@ -110,37 +108,8 @@ public class MemberService {
 
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
+        List<ChannelCategory> categories = categoryRepository.findAllByServerIdWithServer(serverId);
 
-        return ServerResponse.builder()
-                .id(server.getId())
-                .name(server.getName())
-                .imageUrl(server.getImageUrl())
-                .inviteCode(server.getInviteCode())
-                .userId(server.getUser().getId())
-                .members(members.stream().map(member -> ServerResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .serverId(member.getServer().getId())
-                        .user(ServerResponse.UserItem.builder()
-                                .id(member.getUser().getId())
-                                .username(member.getUser().getUsername2())
-                                .email(member.getUser().getEmail())
-                                .fullName(member.getUser().getFullName())
-                                .imageUrl(member.getUser().getImageUrl())
-                                .createdAt(member.getUser().getCreatedAt())
-                                .updatedAt(member.getUser().getUpdatedAt())
-                                .build())
-                        .build()).toList())
-                .channels(channels.stream().map(channel -> ServerResponse.ChannelItem.builder()
-                        .id(channel.getId())
-                        .name(channel.getName())
-                        .type(channel.getType())
-                        .userId(channel.getUser().getId())
-                        .serverId(channel.getServer().getId())
-                        .build()).toList())
-                .createdAt(server.getCreatedAt())
-                .updatedAt(server.getUpdatedAt())
-                .build();
+        return ChannelCategoryService.toResponse(server, members, channels, categories);
     }
 }
