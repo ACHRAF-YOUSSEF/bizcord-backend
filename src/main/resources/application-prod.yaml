@@ -46,3 +46,6 @@ app:
   jwt:
     secret-key: ${APP_JWT_SECRET_KEY}
     access-token-expiry-ms: 900000
+  mediasoup:
+    url: ${MEDIASOUP_URL:http://mediasoup:3000}
+    api-secret: ${MEDIASOUP_API_SECRET:bizcord-mediasoup-secret}
