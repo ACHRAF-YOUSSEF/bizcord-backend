@@ -69,4 +69,12 @@ public final class ErrorMessages {
     public static final String CATEGORY_DEFAULT_DELETE = "Cannot delete the default category";
     public static final String CATEGORY_LAST_DELETE = "Cannot delete the last category";
     public static final String CATEGORY_REORDER_FORBIDDEN = "You do not have permission to reorder categories";
+
+    // Event
+    public static final String EVENT_NOT_FOUND = "Event not found";
+    public static final String EVENT_WRONG_SERVER = "Event does not belong to this server";
+    public static final String EVENT_CREATE_FORBIDDEN = "You do not have permission to create events";
+    public static final String EVENT_EDIT_FORBIDDEN = "Only the event creator or an admin can edit events";
+    public static final String EVENT_DELETE_FORBIDDEN = "Only the event creator or an admin can delete events";
+    public static final String EVENT_INVALID_TIME = "End time must be after start time";
 }
