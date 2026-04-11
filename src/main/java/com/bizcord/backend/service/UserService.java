@@ -45,8 +45,8 @@ public class UserService {
         List<Member> allMembers = memberRepository.findAllByServerIdInWithUserAndServer(serverIds);
 
         return allMembers.stream()
-                .filter(u -> !u.getId().equals(currentUser.getId()) && !u.getUser().getId().equals(currentUser.getId()))
-                .collect(Collectors.toMap(Member::getId, u -> u, (a, _) -> a))
+                .filter(u -> !u.getUser().getId().equals(currentUser.getId()))
+                .collect(Collectors.toMap(m -> m.getUser().getId(), m -> m, (a, _) -> a))
                 .values()
                 .stream()
                 .map(this::toProfileResponse)
@@ -58,7 +58,7 @@ public class UserService {
 
         return UserProfileResponse
                 .builder()
-                .id(member.getId())
+                .id(user.getId())
                 .fullName(user.getFullName())
                 .username(user.getUsername2())
                 .email(user.getEmail())
