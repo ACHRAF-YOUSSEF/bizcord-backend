@@ -77,4 +77,8 @@ public final class ErrorMessages {
     public static final String EVENT_EDIT_FORBIDDEN = "Only the event creator or an admin can edit events";
     public static final String EVENT_DELETE_FORBIDDEN = "Only the event creator or an admin can delete events";
     public static final String EVENT_INVALID_TIME = "End time must be after start time";
+
+    // Notification
+    public static final String NOTIFICATION_NOT_FOUND = "Notification not found";
+    public static final String NOTIFICATION_FORBIDDEN = "You do not have access to this notification";
 }

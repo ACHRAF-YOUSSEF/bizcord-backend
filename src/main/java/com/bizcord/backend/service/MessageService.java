@@ -40,6 +40,7 @@ public class MessageService {
     private final UserRepository userRepository;
     private final ReactionRepository reactionRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<MessageResponse> getMessages(String channelId, String cursor, String email) {
@@ -95,6 +96,14 @@ public class MessageService {
         List<Reaction> reactions = reactionRepository.findAllByMessageId(saved.getId());
         MessageResponse response = toResponse(saved, reactions, currentUser.getId());
         broadcast(channelId, "NEW", response);
+
+        notificationService.notifyMentions(
+                request.getContent(),
+                currentUser.getId(),
+                channel.getServer().getId(),
+                channelId,
+                saved.getId()
+        );
 
         return response;
     }
