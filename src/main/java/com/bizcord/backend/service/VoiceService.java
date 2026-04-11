@@ -1,0 +1,163 @@
+package com.bizcord.backend.service;
+
+import com.bizcord.backend.dto.WebSocketMessage;
+import com.bizcord.backend.entity.Channel;
+import com.bizcord.backend.entity.ChannelType;
+import com.bizcord.backend.entity.User;
+import com.bizcord.backend.repository.ChannelRepository;
+import com.bizcord.backend.repository.MemberRepository;
+import com.bizcord.backend.repository.UserRepository;
+import com.bizcord.backend.utils.ErrorMessages;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Service
+@RequiredArgsConstructor
+public class VoiceService {
+    private final MediasoupClient mediasoupClient;
+    private final ChannelRepository channelRepository;
+    private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    // channelId -> Set<userId> for tracking who's in each voice channel
+    private final ConcurrentHashMap<String, Set<String>> voiceParticipants = new ConcurrentHashMap<>();
+
+    public Map<String, Object> join(String channelId, String email) {
+        User user = getUser(email);
+        Channel channel = getVoiceChannel(channelId);
+        assertMember(channel.getServer().getId(), user.getId());
+
+        Map<String, Object> result = mediasoupClient.joinRoom(channelId, user.getId());
+
+        voiceParticipants.computeIfAbsent(channelId, k -> ConcurrentHashMap.newKeySet()).add(user.getId());
+
+        broadcast(channelId, "VOICE_JOIN", Map.of(
+                "userId", user.getId(),
+                "username", user.getUsername(),
+                "channelId", channelId
+        ));
+
+        return result;
+    }
+
+    public void leave(String channelId, String email) {
+        User user = getUser(email);
+
+        mediasoupClient.leaveRoom(channelId, user.getId());
+
+        Set<String> participants = voiceParticipants.get(channelId);
+        if (participants != null) {
+            participants.remove(user.getId());
+            if (participants.isEmpty()) {
+                voiceParticipants.remove(channelId);
+            }
+        }
+
+        broadcast(channelId, "VOICE_LEAVE", Map.of(
+                "userId", user.getId(),
+                "channelId", channelId
+        ));
+    }
+
+    public Map<String, Object> createTransport(String channelId, String email) {
+        User user = getUser(email);
+        return mediasoupClient.createTransport(channelId, user.getId());
+    }
+
+    public void connectTransport(String channelId, String transportId, Object dtlsParameters, String email) {
+        User user = getUser(email);
+        mediasoupClient.connectTransport(channelId, user.getId(), transportId, dtlsParameters);
+    }
+
+    public Map<String, Object> produce(String channelId, String transportId, String kind,
+                                         Object rtpParameters, Map<String, Object> appData, String email) {
+        User user = getUser(email);
+        Map<String, Object> result = mediasoupClient.produce(channelId, user.getId(), transportId, kind, rtpParameters, appData);
+
+        broadcast(channelId, "NEW_PRODUCER", Map.of(
+                "userId", user.getId(),
+                "producerId", result.get("id"),
+                "kind", kind,
+                "appData", appData != null ? appData : Map.of()
+        ));
+
+        return result;
+    }
+
+    public Map<String, Object> consume(String channelId, String transportId, String producerId,
+                                        Object rtpCapabilities, String email) {
+        User user = getUser(email);
+        return mediasoupClient.consume(channelId, user.getId(), transportId, producerId, rtpCapabilities);
+    }
+
+    public void resumeConsumer(String channelId, String consumerId, String email) {
+        User user = getUser(email);
+        mediasoupClient.resumeConsumer(channelId, user.getId(), consumerId);
+    }
+
+    public void pauseProducer(String channelId, String producerId, String email) {
+        User user = getUser(email);
+        mediasoupClient.pauseProducer(channelId, user.getId(), producerId);
+
+        broadcast(channelId, "PRODUCER_PAUSED", Map.of(
+                "userId", user.getId(),
+                "producerId", producerId
+        ));
+    }
+
+    public void resumeProducer(String channelId, String producerId, String email) {
+        User user = getUser(email);
+        mediasoupClient.resumeProducer(channelId, user.getId(), producerId);
+
+        broadcast(channelId, "PRODUCER_RESUMED", Map.of(
+                "userId", user.getId(),
+                "producerId", producerId
+        ));
+    }
+
+    public void closeProducer(String channelId, String producerId, String email) {
+        User user = getUser(email);
+        mediasoupClient.closeProducer(channelId, user.getId(), producerId);
+
+        broadcast(channelId, "PRODUCER_CLOSED", Map.of(
+                "userId", user.getId(),
+                "producerId", producerId
+        ));
+    }
+
+    public Set<String> getParticipants(String channelId) {
+        return voiceParticipants.getOrDefault(channelId, Set.of());
+    }
+
+    private User getUser(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
+    }
+
+    private Channel getVoiceChannel(String channelId) {
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CHANNEL_NOT_FOUND));
+        if (channel.getType() != ChannelType.VOICE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel is not a voice channel");
+        }
+        return channel;
+    }
+
+    private void assertMember(String serverId, String userId) {
+        if (!memberRepository.existsByServerIdAndUserId(serverId, userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.NOT_A_MEMBER);
+        }
+    }
+
+    private void broadcast(String channelId, String type, Object data) {
+        messagingTemplate.convertAndSend("/topic/voice/" + channelId, new WebSocketMessage(type, data));
+    }
+}

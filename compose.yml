@@ -36,6 +36,23 @@ services:
     expose:
       - "8080"
 
+  mediasoup:
+    image: achrafyoussef/bizcord-mediasoup:latest
+    container_name: bizcord-mediasoup
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      LISTEN_IP: 0.0.0.0
+      ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:-127.0.0.1}
+      RTC_MIN_PORT: 40000
+      RTC_MAX_PORT: 49999
+      API_SECRET: ${MEDIASOUP_API_SECRET:-bizcord-mediasoup-secret}
+    expose:
+      - "3000"
+    ports:
+      - "40000-49999:40000-49999/udp"
+      - "40000-49999:40000-49999/tcp"
+
   frontend:
     image: achrafyoussef/bizcord-frontend:latest
     container_name: bizcord-frontend
