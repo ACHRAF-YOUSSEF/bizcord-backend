@@ -4,6 +4,7 @@ import com.bizcord.backend.dto.ServerCreateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.dto.ServerUpdateRequest;
 import com.bizcord.backend.entity.*;
+import com.bizcord.backend.repository.BannedUserRepository;
 import com.bizcord.backend.repository.ChannelCategoryRepository;
 import com.bizcord.backend.repository.ChannelRepository;
 import com.bizcord.backend.repository.MemberRepository;
@@ -32,6 +33,7 @@ public class ServerService {
     private final MemberRepository memberRepository;
     private final ChannelRepository channelRepository;
     private final ChannelCategoryRepository categoryRepository;
+    private final BannedUserRepository bannedUserRepository;
 
     @Transactional(readOnly = true)
     public List<ServerResponse> getServersThatTheCurrentUserIsMemberOf(String email) {
@@ -171,6 +173,10 @@ public class ServerService {
 
         if (alreadyMember) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.SERVER_ALREADY_MEMBER);
+        }
+
+        if (bannedUserRepository.existsByServerIdAndUserId(server.getId(), currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.MEMBER_BANNED_FROM_SERVER);
         }
 
         Member newMember = Member

@@ -65,5 +65,13 @@ public class ServerResponse {
         private String serverId;
         private boolean defaultCategory;
     }
+
+    @Data
+    @Builder
+    public static class BannedUserItem {
+        private String id;
+        private UserItem user;
+        private LocalDateTime createdAt;
+    }
 }
 
