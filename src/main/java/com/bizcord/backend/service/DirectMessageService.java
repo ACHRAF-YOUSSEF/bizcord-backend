@@ -6,9 +6,11 @@ import com.bizcord.backend.dto.DirectMessageUpdateRequest;
 import com.bizcord.backend.dto.WebSocketMessage;
 import com.bizcord.backend.entity.Conversation;
 import com.bizcord.backend.entity.DirectMessage;
+import com.bizcord.backend.entity.Reaction;
 import com.bizcord.backend.entity.User;
 import com.bizcord.backend.repository.ConversationRepository;
 import com.bizcord.backend.repository.DirectMessageRepository;
+import com.bizcord.backend.repository.ReactionRepository;
 import com.bizcord.backend.repository.UserRepository;
 import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +34,7 @@ public class DirectMessageService {
     private final DirectMessageRepository directMessageRepository;
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
+    private final ReactionRepository reactionRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional(readOnly = true)
@@ -52,7 +57,11 @@ public class DirectMessageService {
 
         List<DirectMessage> reversed = new ArrayList<>(messages).reversed();
 
-        return reversed.stream().map(this::toResponse).toList();
+        List<String> dmIds = reversed.stream().map(DirectMessage::getId).toList();
+        Map<String, List<Reaction>> reactionsByDm = reactionRepository.findAllByDirectMessageIdIn(dmIds)
+                .stream().collect(Collectors.groupingBy(r -> r.getDirectMessage().getId()));
+
+        return reversed.stream().map(dm -> toResponse(dm, reactionsByDm.getOrDefault(dm.getId(), List.of()), currentUser.getId())).toList();
     }
 
     @Transactional
@@ -80,7 +89,7 @@ public class DirectMessageService {
         DirectMessage saved = directMessageRepository.findByIdWithUser(message.getId())
                 .orElseThrow();
 
-        DirectMessageResponse response = toResponse(saved);
+        DirectMessageResponse response = toResponse(saved, List.of(), currentUser.getId());
         broadcast(conversationId, "NEW", response);
 
         return response;
@@ -102,7 +111,8 @@ public class DirectMessageService {
         message.setContent(request.getContent());
         directMessageRepository.save(message);
 
-        DirectMessageResponse response = toResponse(message);
+        List<Reaction> reactions = reactionRepository.findAllByDirectMessageId(messageId);
+        DirectMessageResponse response = toResponse(message, reactions, currentUser.getId());
         broadcast(conversationId, "UPDATE", response);
 
         return response;
@@ -126,7 +136,7 @@ public class DirectMessageService {
         message.setAttachments(new ArrayList<>());
         directMessageRepository.save(message);
 
-        DirectMessageResponse response = toResponse(message);
+        DirectMessageResponse response = toResponse(message, List.of(), currentUser.getId());
         broadcast(conversationId, "DELETE", response);
 
         return response;
@@ -156,8 +166,20 @@ public class DirectMessageService {
                 new WebSocketMessage(type, data));
     }
 
-    private DirectMessageResponse toResponse(DirectMessage dm) {
+    private DirectMessageResponse toResponse(DirectMessage dm, List<Reaction> reactions, String currentUserId) {
         User user = dm.getUser();
+
+        Map<String, List<Reaction>> grouped = reactions.stream()
+                .collect(Collectors.groupingBy(Reaction::getEmoji));
+
+        List<DirectMessageResponse.ReactionGroup> reactionGroups = grouped.entrySet().stream()
+                .map(e -> DirectMessageResponse.ReactionGroup.builder()
+                        .emoji(e.getKey())
+                        .count(e.getValue().size())
+                        .userIds(e.getValue().stream().map(r -> r.getUser().getId()).toList())
+                        .me(e.getValue().stream().anyMatch(r -> r.getUser().getId().equals(currentUserId)))
+                        .build())
+                .toList();
 
         return DirectMessageResponse.builder()
                 .id(dm.getId())
@@ -172,6 +194,7 @@ public class DirectMessageService {
                         .build())
                 .conversationId(dm.getConversation().getId())
                 .deleted(dm.isDeleted())
+                .reactions(reactionGroups)
                 .createdAt(dm.getCreatedAt())
                 .updatedAt(dm.getUpdatedAt())
                 .build();
