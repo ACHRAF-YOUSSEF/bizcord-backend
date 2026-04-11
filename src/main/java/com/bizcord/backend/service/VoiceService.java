@@ -14,6 +14,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,18 +31,30 @@ public class VoiceService {
     // channelId -> Set<userId> for tracking who's in each voice channel
     private final ConcurrentHashMap<String, Set<String>> voiceParticipants = new ConcurrentHashMap<>();
 
+    @SuppressWarnings("unchecked")
     public Map<String, Object> join(String channelId, String email) {
         User user = getUser(email);
         Channel channel = getVoiceChannel(channelId);
         assertMember(channel.getServer().getId(), user.getId());
 
-        Map<String, Object> result = mediasoupClient.joinRoom(channelId, user.getId());
+        Map<String, Object> result = new java.util.HashMap<>(mediasoupClient.joinRoom(channelId, user.getId()));
+
+        // Enrich peers with username info
+        List<Map<String, Object>> peers = (List<Map<String, Object>>) result.get("peers");
+        if (peers != null) {
+            for (Map<String, Object> peer : peers) {
+                String peerId = (String) peer.get("peerId");
+                userRepository.findById(peerId).ifPresent(u ->
+                        peer.put("username", u.getUsername2())
+                );
+            }
+        }
 
         voiceParticipants.computeIfAbsent(channelId, k -> ConcurrentHashMap.newKeySet()).add(user.getId());
 
         broadcast(channelId, "VOICE_JOIN", Map.of(
                 "userId", user.getId(),
-                "username", user.getUsername(),
+                "username", user.getUsername2(),
                 "channelId", channelId
         ));
 
