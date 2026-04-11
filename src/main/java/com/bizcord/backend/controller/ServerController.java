@@ -5,6 +5,7 @@ import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.ServerCreateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.dto.ServerUpdateRequest;
+import com.bizcord.backend.dto.InviteExpiryRequest;
 import com.bizcord.backend.service.ServerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -77,6 +78,14 @@ public class ServerController {
     public ResponseEntity<ServerResponse> newInviteCode(@PathVariable String id,
                                                         @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(serverService.newInviteCode(id, userDetails.getUsername()));
+    }
+
+    @RateLimit(limit = 10, keyType = RateLimitKeyType.UID)
+    @PatchMapping("/{id}/invite-expiry")
+    public ResponseEntity<ServerResponse> updateInviteExpiry(@PathVariable String id,
+                                                             @RequestBody InviteExpiryRequest request,
+                                                             @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(serverService.updateInviteExpiry(id, request.getExpiresAt(), userDetails.getUsername()));
     }
 
     @PatchMapping("/{id}/leave")

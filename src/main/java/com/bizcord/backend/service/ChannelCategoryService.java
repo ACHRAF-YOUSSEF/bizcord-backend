@@ -178,6 +178,7 @@ public class ChannelCategoryService {
                 .imageUrl(server.getImageUrl())
                 .inviteCode(server.getInviteCode())
                 .userId(server.getUser().getId())
+                .inviteExpiresAt(server.getInviteExpiresAt())
                 .members(members.stream().map(member -> ServerResponse.MemberItem.builder()
                         .id(member.getId())
                         .name(member.getName())

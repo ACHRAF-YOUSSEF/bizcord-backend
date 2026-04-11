@@ -38,6 +38,8 @@ public class Server {
     @NotBlank
     private String inviteCode;
 
+    private LocalDateTime inviteExpiresAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     private User user;
 

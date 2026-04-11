@@ -160,6 +160,10 @@ public class ServerService {
         Server server = serverRepository.findByInviteCodeWithOwner(inviteCode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_INVALID_INVITE_CODE));
 
+        if (server.getInviteExpiresAt() != null && server.getInviteExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.GONE, ErrorMessages.SERVER_INVITE_EXPIRED);
+        }
+
         return buildFullResponse(server.getId(), server);
     }
 
@@ -168,6 +172,10 @@ public class ServerService {
         User currentUser = getCurrentUser(email);
         Server server = serverRepository.findByInviteCodeWithOwner(inviteCode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_INVALID_INVITE_CODE));
+
+        if (server.getInviteExpiresAt() != null && server.getInviteExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.GONE, ErrorMessages.SERVER_INVITE_EXPIRED);
+        }
 
         boolean alreadyMember = memberRepository.existsByServerIdAndUserId(server.getId(), currentUser.getId());
 
@@ -203,6 +211,21 @@ public class ServerService {
         }
 
         server.setInviteCode(generateInviteCode());
+        server.setInviteExpiresAt(null);
+
+        return buildFullResponse(serverId, server);
+    }
+
+    @Transactional
+    public ServerResponse updateInviteExpiry(String serverId, LocalDateTime expiresAt, String email) {
+        User currentUser = getCurrentUser(email);
+        Server server = getServerWithOwner(serverId);
+
+        if (!server.getUser().getId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.SERVER_INVITE_REGEN_FORBIDDEN);
+        }
+
+        server.setInviteExpiresAt(expiresAt);
 
         return buildFullResponse(serverId, server);
     }
