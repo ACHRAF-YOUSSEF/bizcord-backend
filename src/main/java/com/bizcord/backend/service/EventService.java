@@ -23,6 +23,7 @@ public class EventService {
     private final UserRepository userRepository;
     private final ServerRepository serverRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<EventResponse> getEvents(String serverId, String email) {
@@ -94,6 +95,7 @@ public class EventService {
 
         EventResponse response = toResponse(event, List.of());
         broadcast(serverId, "EVENT_CREATED", response);
+        notificationService.notifyEventCreated(event);
         return response;
     }
 
@@ -176,6 +178,7 @@ public class EventService {
         List<EventAttendee> attendees = attendeeRepository.findAllByEventIdWithUser(eventId);
         EventResponse response = toResponse(event, attendees);
         broadcast(serverId, "EVENT_RSVP", response);
+        notificationService.notifyRsvpUpdate(event, user, request.getStatus());
         return response;
     }
 
