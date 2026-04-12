@@ -9,10 +9,10 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.security.Principal;
 
 @Controller
 @RequiredArgsConstructor
@@ -24,13 +24,13 @@ public class TypingWebSocketController {
     public void channelTyping(
             @DestinationVariable String channelId,
             @Payload TypingEvent request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
+            Principal principal) {
+        User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         TypingEvent event = TypingEvent.builder()
                 .type(request.getType())
                 .userId(user.getId())
-                .username(user.getUsername())
+                .username(user.getUsername2())
                 .fullName(user.getFullName())
                 .imageUrl(user.getImageUrl())
                 .build();
@@ -41,13 +41,13 @@ public class TypingWebSocketController {
     public void conversationTyping(
             @DestinationVariable String conversationId,
             @Payload TypingEvent request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
+            Principal principal) {
+        User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         TypingEvent event = TypingEvent.builder()
                 .type(request.getType())
                 .userId(user.getId())
-                .username(user.getUsername())
+                .username(user.getUsername2())
                 .fullName(user.getFullName())
                 .imageUrl(user.getImageUrl())
                 .build();
