@@ -1,6 +1,7 @@
 package com.bizcord.backend.service;
 
 import com.bizcord.backend.dto.MessageCreateRequest;
+import com.bizcord.backend.mapper.MessageMapper;
 import com.bizcord.backend.dto.MessageResponse;
 import com.bizcord.backend.dto.MessageUpdateRequest;
 import com.bizcord.backend.dto.WebSocketMessage;
@@ -183,9 +184,6 @@ public class MessageService {
     }
 
     private MessageResponse toResponse(Message msg, List<Reaction> reactions, String currentUserId) {
-        Member member = msg.getMember();
-        User user = member.getUser();
-
         Map<String, List<Reaction>> grouped = reactions.stream()
                 .collect(Collectors.groupingBy(Reaction::getEmoji));
 
@@ -198,27 +196,9 @@ public class MessageService {
                         .build())
                 .toList();
 
-        return MessageResponse.builder()
-                .id(msg.getId())
-                .content(msg.getContent())
-                .attachments(msg.getAttachments())
-                .member(MessageResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .user(MessageResponse.UserItem.builder()
-                                .id(user.getId())
-                                .fullName(user.getFullName())
-                                .username(user.getUsername2())
-                                .imageUrl(user.getImageUrl())
-                                .build())
-                        .build())
-                .channelId(msg.getChannel().getId())
-                .deleted(msg.isDeleted())
-                .reactions(reactionGroups)
-                .createdAt(msg.getCreatedAt())
-                .updatedAt(msg.getUpdatedAt())
-                .build();
+        MessageResponse response = MessageMapper.INSTANCE.toResponse(msg);
+        response.setReactions(reactionGroups);
+        return response;
     }
 }
 

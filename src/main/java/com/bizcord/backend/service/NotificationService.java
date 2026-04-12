@@ -3,6 +3,7 @@ package com.bizcord.backend.service;
 import com.bizcord.backend.dto.NotificationResponse;
 import com.bizcord.backend.dto.WebSocketMessage;
 import com.bizcord.backend.entity.*;
+import com.bizcord.backend.mapper.NotificationMapper;
 import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.NotificationRepository;
 import com.bizcord.backend.repository.UserRepository;
@@ -194,18 +195,7 @@ public class NotificationService {
     }
 
     private NotificationResponse toResponse(Notification n) {
-        return NotificationResponse.builder()
-                .id(n.getId())
-                .type(n.getType())
-                .title(n.getTitle())
-                .body(n.getBody())
-                .referenceId(n.getReferenceId())
-                .referenceType(n.getReferenceType())
-                .serverId(n.getServerId())
-                .channelId(n.getChannelId())
-                .read(n.isRead())
-                .createdAt(n.getCreatedAt())
-                .build();
+        return NotificationMapper.INSTANCE.toResponse(n);
     }
 
     private String truncate(String text, int maxLength) {

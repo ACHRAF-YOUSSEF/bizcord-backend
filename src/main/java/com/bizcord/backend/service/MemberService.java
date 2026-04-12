@@ -3,6 +3,7 @@ package com.bizcord.backend.service;
 import com.bizcord.backend.dto.MemberRoleUpdateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.entity.*;
+import com.bizcord.backend.mapper.ServerMapper;
 import com.bizcord.backend.repository.BannedUserRepository;
 import com.bizcord.backend.repository.ChannelCategoryRepository;
 import com.bizcord.backend.repository.ChannelRepository;
@@ -186,19 +187,7 @@ public class MemberService {
         }
 
         return bannedUserRepository.findAllByServerIdWithUser(serverId).stream()
-                .map(b -> ServerResponse.BannedUserItem.builder()
-                        .id(b.getId())
-                        .user(ServerResponse.UserItem.builder()
-                                .id(b.getUser().getId())
-                                .username(b.getUser().getUsername2())
-                                .email(b.getUser().getEmail())
-                                .fullName(b.getUser().getFullName())
-                                .imageUrl(b.getUser().getImageUrl())
-                                .createdAt(b.getUser().getCreatedAt())
-                                .updatedAt(b.getUser().getUpdatedAt())
-                                .build())
-                        .createdAt(b.getCreatedAt())
-                        .build())
+                .map(ServerMapper.INSTANCE::toBannedUserItem)
                 .toList();
     }
 

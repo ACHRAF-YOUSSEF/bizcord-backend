@@ -2,6 +2,7 @@ package com.bizcord.backend.service;
 
 import com.bizcord.backend.dto.*;
 import com.bizcord.backend.entity.*;
+import com.bizcord.backend.mapper.ServerMapper;
 import com.bizcord.backend.repository.*;
 import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -172,46 +173,6 @@ public class ChannelCategoryService {
     }
 
     static ServerResponse toResponse(Server server, List<Member> members, List<Channel> channels, List<ChannelCategory> categories) {
-        return ServerResponse.builder()
-                .id(server.getId())
-                .name(server.getName())
-                .imageUrl(server.getImageUrl())
-                .inviteCode(server.getInviteCode())
-                .userId(server.getUser().getId())
-                .inviteExpiresAt(server.getInviteExpiresAt())
-                .members(members.stream().map(member -> ServerResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .serverId(member.getServer().getId())
-                        .user(ServerResponse.UserItem.builder()
-                                .id(member.getUser().getId())
-                                .username(member.getUser().getUsername2())
-                                .email(member.getUser().getEmail())
-                                .fullName(member.getUser().getFullName())
-                                .imageUrl(member.getUser().getImageUrl())
-                                .createdAt(member.getUser().getCreatedAt())
-                                .updatedAt(member.getUser().getUpdatedAt())
-                                .build())
-                        .build()).toList())
-                .channels(channels.stream().map(ch -> ServerResponse.ChannelItem.builder()
-                        .id(ch.getId())
-                        .name(ch.getName())
-                        .type(ch.getType())
-                        .userId(ch.getUser().getId())
-                        .serverId(ch.getServer().getId())
-                        .categoryId(ch.getCategory() != null ? ch.getCategory().getId() : null)
-                        .position(ch.getPosition())
-                        .build()).toList())
-                .categories(categories.stream().map(cat -> ServerResponse.CategoryItem.builder()
-                        .id(cat.getId())
-                        .name(cat.getName())
-                        .position(cat.getPosition())
-                        .serverId(cat.getServer().getId())
-                        .defaultCategory(cat.isDefaultCategory())
-                        .build()).toList())
-                .createdAt(server.getCreatedAt())
-                .updatedAt(server.getUpdatedAt())
-                .build();
+        return ServerMapper.INSTANCE.toResponse(server, members, channels, categories);
     }
 }
