@@ -10,16 +10,14 @@ import java.util.List;
 
 @Data
 @Builder
-public class MessageResponse {
+public class MessageSearchResponse {
     private String id;
     private String content;
     private List<String> attachments;
-    private MemberItem member;
     private String channelId;
-    private boolean deleted;
-    private List<ReactionGroup> reactions;
+    private String channelName;
+    private MemberItem member;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
     @Data
     @Builder
@@ -39,14 +37,4 @@ public class MessageResponse {
         private MemberRole role;
         private UserItem user;
     }
-
-    @Data
-    @Builder
-    public static class ReactionGroup {
-        private String emoji;
-        private int count;
-        private List<String> userIds;
-        private boolean me;
-    }
 }
-

@@ -33,6 +33,7 @@ public interface ServerMapper {
 
     @Named("toServerUserItem")
     @Mapping(source = "username2", target = "username")
+    @Mapping(source = "status", target = "status")
     ServerResponse.UserItem toUserItem(User user);
 
     @Mapping(source = "server.id", target = "serverId")

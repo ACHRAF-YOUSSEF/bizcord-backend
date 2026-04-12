@@ -3,6 +3,7 @@ package com.bizcord.backend.service;
 import com.bizcord.backend.dto.MessageCreateRequest;
 import com.bizcord.backend.mapper.MessageMapper;
 import com.bizcord.backend.dto.MessageResponse;
+import com.bizcord.backend.dto.MessageSearchResponse;
 import com.bizcord.backend.dto.MessageUpdateRequest;
 import com.bizcord.backend.dto.WebSocketMessage;
 import com.bizcord.backend.entity.Channel;
@@ -158,6 +159,37 @@ public class MessageService {
         broadcast(channelId, "DELETE", response);
 
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MessageSearchResponse> searchMessages(String serverId, String channelId, String query, int page, String email) {
+        User currentUser = getCurrentUser(email);
+        memberRepository.findByServerIdAndUserIdWithUserAndServer(serverId, currentUser.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.NOT_A_MEMBER));
+
+        String channelFilter = (channelId != null && !channelId.isBlank()) ? channelId : null;
+        List<Message> messages = messageRepository.searchByContent(serverId, channelFilter, query, PageRequest.of(page, 20));
+
+        return messages.stream().map(m -> MessageSearchResponse.builder()
+                .id(m.getId())
+                .content(m.getContent())
+                .attachments(m.getAttachments())
+                .channelId(m.getChannel().getId())
+                .channelName(m.getChannel().getName())
+                .createdAt(m.getCreatedAt())
+                .member(MessageSearchResponse.MemberItem.builder()
+                        .id(m.getMember().getId())
+                        .name(m.getMember().getName())
+                        .role(m.getMember().getRole())
+                        .user(MessageSearchResponse.UserItem.builder()
+                                .id(m.getMember().getUser().getId())
+                                .fullName(m.getMember().getUser().getFullName())
+                                .username(m.getMember().getUser().getUsername())
+                                .imageUrl(m.getMember().getUser().getImageUrl())
+                                .status(m.getMember().getUser().getStatus())
+                                .build())
+                        .build())
+                .build()).toList();
     }
 
     // --- helpers ---

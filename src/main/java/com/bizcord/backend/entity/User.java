@@ -67,6 +67,11 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user2")
     private List<Conversation> conversationsReceived = new ArrayList<>();
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status = UserStatus.OFFLINE;
+
     @CreatedDate
     private LocalDateTime createdAt;
 

@@ -34,8 +34,20 @@ public interface MessageRepository extends JpaRepository<Message, String> {
             select m from bizcord_messages m
             join fetch m.member mb
             join fetch mb.user
-            where m.id = :id
+            where m.channel.id = :id
             """)
     Optional<Message> findByIdWithMemberAndUser(String id);
+
+    @Query("""
+            select m from bizcord_messages m
+            join fetch m.member mb
+            join fetch mb.user
+            where m.channel.server.id = :serverId
+              and (:channelId is null or m.channel.id = :channelId)
+              and lower(m.content) like lower(concat('%', :query, '%'))
+              and m.deleted = false
+            order by m.createdAt desc
+            """)
+    List<Message> searchByContent(String serverId, String channelId, String query, Pageable pageable);
 }
 
