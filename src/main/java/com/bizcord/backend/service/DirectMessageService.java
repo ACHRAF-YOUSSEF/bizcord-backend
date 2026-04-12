@@ -86,6 +86,12 @@ public class DirectMessageService {
                 .conversation(conversation)
                 .build();
 
+        if (request.getParentMessageId() != null && !request.getParentMessageId().isBlank()) {
+            DirectMessage parent = directMessageRepository.findById(request.getParentMessageId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parent message not found"));
+            message.setParentMessage(parent);
+        }
+
         directMessageRepository.save(message);
 
         DirectMessage saved = directMessageRepository.findByIdWithUser(message.getId())
@@ -207,6 +213,17 @@ public class DirectMessageService {
 
         DirectMessageResponse response = DirectMessageMapper.INSTANCE.toResponse(dm);
         response.setReactions(reactionGroups);
+        if (dm.getParentMessage() != null) {
+            DirectMessage parent = dm.getParentMessage();
+            String senderName = parent.getUser() != null
+                    ? parent.getUser().getUsername2()
+                    : "Unknown";
+            response.setParentMessage(DirectMessageResponse.ParentMessagePreview.builder()
+                    .id(parent.getId())
+                    .content(parent.isDeleted() ? null : parent.getContent())
+                    .senderName(senderName)
+                    .build());
+        }
         return response;
     }
 }

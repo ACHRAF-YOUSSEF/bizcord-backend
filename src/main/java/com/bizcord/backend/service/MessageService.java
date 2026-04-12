@@ -91,6 +91,12 @@ public class MessageService {
                 .channel(channel)
                 .build();
 
+        if (request.getParentMessageId() != null && !request.getParentMessageId().isBlank()) {
+            Message parent = messageRepository.findById(request.getParentMessageId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parent message not found"));
+            message.setParentMessage(parent);
+        }
+
         messageRepository.save(message);
 
         Message saved = messageRepository.findByIdWithMemberAndUser(message.getId()).orElseThrow();
@@ -230,6 +236,17 @@ public class MessageService {
 
         MessageResponse response = MessageMapper.INSTANCE.toResponse(msg);
         response.setReactions(reactionGroups);
+        if (msg.getParentMessage() != null) {
+            Message parent = msg.getParentMessage();
+            String senderName = parent.getMember() != null
+                    ? parent.getMember().getUser().getUsername2()
+                    : "Unknown";
+            response.setParentMessage(MessageResponse.ParentMessagePreview.builder()
+                    .id(parent.getId())
+                    .content(parent.isDeleted() ? null : parent.getContent())
+                    .senderName(senderName)
+                    .build());
+        }
         return response;
     }
 }

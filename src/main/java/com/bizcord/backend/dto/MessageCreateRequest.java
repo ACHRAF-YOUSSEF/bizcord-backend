@@ -8,5 +8,6 @@ import java.util.List;
 public class MessageCreateRequest {
     private String content;
     private List<String> attachments;
+    private String parentMessageId;
 }
 

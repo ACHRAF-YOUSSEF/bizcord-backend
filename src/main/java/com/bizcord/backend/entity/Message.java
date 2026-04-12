@@ -36,6 +36,9 @@ public class Message {
     @ManyToOne(fetch = FetchType.LAZY)
     private Channel channel;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Message parentMessage;
+
     @Builder.Default
     private boolean deleted = false;
 

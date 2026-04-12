@@ -16,8 +16,17 @@ public class DirectMessageResponse {
     private String conversationId;
     private boolean deleted;
     private List<ReactionGroup> reactions;
+    private ParentMessagePreview parentMessage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @Data
+    @Builder
+    public static class ParentMessagePreview {
+        private String id;
+        private String content;
+        private String senderName;
+    }
 
     @Data
     @Builder
