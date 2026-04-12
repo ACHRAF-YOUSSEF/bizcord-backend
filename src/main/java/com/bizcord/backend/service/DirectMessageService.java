@@ -38,6 +38,7 @@ public class DirectMessageService {
     private final UserRepository userRepository;
     private final ReactionRepository reactionRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<DirectMessageResponse> getMessages(String conversationId, String cursor, String email) {
@@ -99,6 +100,10 @@ public class DirectMessageService {
 
         DirectMessageResponse response = toResponse(saved, List.of(), currentUser.getId());
         broadcast(conversationId, "NEW", response);
+
+        User otherUser = conversation.getUser1().getId().equals(currentUser.getId())
+                ? conversation.getUser2() : conversation.getUser1();
+        notificationService.notifyDirectMessage(currentUser, otherUser, conversationId, request.getContent());
 
         return response;
     }

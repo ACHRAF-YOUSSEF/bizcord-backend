@@ -163,6 +163,22 @@ public class NotificationService {
         );
     }
 
+    @Transactional
+    public void notifyDirectMessage(User sender, User recipient, String conversationId, String messageContent) {
+        if (sender.getId().equals(recipient.getId())) return;
+
+        createAndPush(
+                recipient,
+                NotificationType.DIRECT_MESSAGE,
+                sender.getUsername2() + " sent you a message",
+                truncate(messageContent != null ? messageContent : "Sent an attachment", 100),
+                conversationId,
+                ReferenceType.MESSAGE,
+                null,
+                null
+        );
+    }
+
     // --- Internal helpers ---
 
     private void createAndPush(User user, NotificationType type, String title, String body,
