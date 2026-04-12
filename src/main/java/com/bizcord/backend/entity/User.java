@@ -69,7 +69,7 @@ public class User implements UserDetails {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(255) not null default 'OFFLINE'")
     private UserStatus status = UserStatus.OFFLINE;
 
     @CreatedDate

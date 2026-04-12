@@ -33,5 +33,15 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, St
             where dm.id = :id
             """)
     Optional<DirectMessage> findByIdWithUser(String id);
+
+    @Query("""
+            select dm from bizcord_direct_messages dm
+            join fetch dm.user u
+            where dm.conversation.id = :conversationId
+              and dm.deleted = false
+              and lower(dm.content) like lower(concat('%', :query, '%'))
+            order by dm.createdAt desc
+            """)
+    List<DirectMessage> searchByContent(String conversationId, String query, Pageable pageable);
 }
 
