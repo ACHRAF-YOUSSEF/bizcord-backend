@@ -15,6 +15,9 @@ public class DirectMessageResponse {
     private UserItem user;
     private String conversationId;
     private boolean deleted;
+    private boolean pinned;
+    private LocalDateTime pinnedAt;
+    private String pinnedByUsername;
     private List<ReactionGroup> reactions;
     private ParentMessagePreview parentMessage;
     private LocalDateTime createdAt;

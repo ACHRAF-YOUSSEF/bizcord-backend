@@ -82,5 +82,24 @@ public class DirectMessageController {
         return ResponseEntity.ok(
                 directMessageService.searchMessages(conversationId, q, page, userDetails.getUsername()));
     }
+
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
+    @PostMapping("/{messageId}/pin")
+    public ResponseEntity<DirectMessageResponse> togglePin(
+            @PathVariable String conversationId,
+            @PathVariable String messageId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+                directMessageService.togglePin(conversationId, messageId, userDetails.getUsername()));
+    }
+
+    @RateLimit(limit = 60, keyType = RateLimitKeyType.UID)
+    @GetMapping("/pinned")
+    public ResponseEntity<List<DirectMessageResponse>> getPinnedMessages(
+            @PathVariable String conversationId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+                directMessageService.getPinnedMessages(conversationId, userDetails.getUsername()));
+    }
 }
 
