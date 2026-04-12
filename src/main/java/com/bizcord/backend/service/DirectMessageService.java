@@ -167,7 +167,7 @@ public class DirectMessageService {
                 .user(DmSearchResponse.UserItem.builder()
                         .id(dm.getUser().getId())
                         .fullName(dm.getUser().getFullName())
-                        .username(dm.getUser().getUsername())
+                        .username(dm.getUser().getUsername2())
                         .imageUrl(dm.getUser().getImageUrl())
                         .build())
                 .build()).toList();

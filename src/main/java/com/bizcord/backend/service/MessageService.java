@@ -184,7 +184,7 @@ public class MessageService {
                         .user(MessageSearchResponse.UserItem.builder()
                                 .id(m.getMember().getUser().getId())
                                 .fullName(m.getMember().getUser().getFullName())
-                                .username(m.getMember().getUser().getUsername())
+                                .username(m.getMember().getUser().getUsername2())
                                 .imageUrl(m.getMember().getUser().getImageUrl())
                                 .status(m.getMember().getUser().getStatus())
                                 .build())
