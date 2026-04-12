@@ -15,6 +15,8 @@ public interface MessageMapper {
     @Mapping(source = "channel.id", target = "channelId")
     @Mapping(target = "reactions", ignore = true)
     @Mapping(target = "parentMessage", ignore = true)
+    @Mapping(target = "pinned", expression = "java(message.getPinnedAt() != null)")
+    @Mapping(target = "pinnedByUsername", expression = "java(message.getPinnedBy() != null ? message.getPinnedBy().getUsername2() : null)")
     MessageResponse toResponse(Message message);
 
     MessageResponse.MemberItem toMemberItem(Member member);

@@ -70,5 +70,24 @@ public class MessageController {
         return ResponseEntity.ok(
                 messageService.deleteMessage(channelId, messageId, userDetails.getUsername()));
     }
+
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
+    @PostMapping("/{messageId}/pin")
+    public ResponseEntity<MessageResponse> togglePin(
+            @PathVariable String channelId,
+            @PathVariable String messageId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+                messageService.togglePin(channelId, messageId, userDetails.getUsername()));
+    }
+
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
+    @GetMapping("/pinned")
+    public ResponseEntity<List<MessageResponse>> getPinnedMessages(
+            @PathVariable String channelId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+                messageService.getPinnedMessages(channelId, userDetails.getUsername()));
+    }
 }
 

@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -196,6 +197,59 @@ public class MessageService {
                                 .build())
                         .build())
                 .build()).toList();
+    }
+
+    // --- Pin/Unpin ---
+
+    @Transactional
+    public MessageResponse togglePin(String channelId, String messageId, String email) {
+        User currentUser = getCurrentUser(email);
+        Channel channel = getChannelWithServer(channelId);
+        Member callerMember = assertMember(channel, currentUser);
+
+        if (callerMember.getRole() != MemberRole.ADMIN && callerMember.getRole() != MemberRole.MODERATOR) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins and moderators can pin messages");
+        }
+
+        Message message = messageRepository.findByIdWithMemberAndUser(messageId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.MESSAGE_NOT_FOUND));
+
+        if (message.isDeleted()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot pin a deleted message");
+        }
+
+        boolean wasPinned = message.getPinnedAt() != null;
+        if (wasPinned) {
+            message.setPinnedAt(null);
+            message.setPinnedBy(null);
+        } else {
+            message.setPinnedAt(LocalDateTime.now());
+            message.setPinnedBy(currentUser);
+        }
+        messageRepository.save(message);
+
+        List<Reaction> reactions = reactionRepository.findAllByMessageId(messageId);
+        MessageResponse response = toResponse(message, reactions, currentUser.getId());
+        broadcast(channelId, wasPinned ? "UNPIN" : "PIN", response);
+
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MessageResponse> getPinnedMessages(String channelId, String email) {
+        User currentUser = getCurrentUser(email);
+        Channel channel = getChannelWithServer(channelId);
+        assertMember(channel, currentUser);
+
+        List<Message> pinned = messageRepository.findPinnedByChannelId(channelId);
+
+        List<String> messageIds = pinned.stream().map(Message::getId).toList();
+        Map<String, List<Reaction>> reactionsByMessage = reactionRepository.findAllByMessageIdIn(messageIds)
+                .stream().collect(Collectors.groupingBy(r -> r.getMessage().getId()));
+
+        return pinned.stream()
+                .map(m -> toResponse(m, reactionsByMessage.getOrDefault(m.getId(), List.of()), currentUser.getId()))
+                .toList();
     }
 
     // --- helpers ---

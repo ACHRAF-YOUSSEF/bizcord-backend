@@ -58,5 +58,19 @@ public interface MessageRepository extends JpaRepository<Message, String> {
             order by m.createdAt desc
             """)
     List<Message> searchByContent(String serverId, String channelId, String query, Pageable pageable);
+
+    @Query("""
+            select m from bizcord_messages m
+            join fetch m.member mb
+            join fetch mb.user
+            left join fetch m.pinnedBy
+            left join fetch m.parentMessage pm
+            left join fetch pm.member pmb
+            left join fetch pmb.user
+            where m.channel.id = :channelId
+              and m.pinnedAt is not null
+            order by m.pinnedAt desc
+            """)
+    List<Message> findPinnedByChannelId(String channelId);
 }
 
