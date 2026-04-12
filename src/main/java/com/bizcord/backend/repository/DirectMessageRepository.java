@@ -13,6 +13,8 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, St
     @Query("""
             select dm from bizcord_direct_messages dm
             join fetch dm.user u
+            left join fetch dm.parentMessage pdm
+            left join fetch pdm.user pu
             where dm.conversation.id = :conversationId
             order by dm.createdAt desc
             """)
@@ -21,6 +23,8 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, St
     @Query("""
             select dm from bizcord_direct_messages dm
             join fetch dm.user u
+            left join fetch dm.parentMessage pdm
+            left join fetch pdm.user pu
             where dm.conversation.id = :conversationId
               and dm.createdAt < :cursor
             order by dm.createdAt desc
@@ -30,6 +34,8 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, St
     @Query("""
             select dm from bizcord_direct_messages dm
             join fetch dm.user u
+            left join fetch dm.parentMessage pdm
+            left join fetch pdm.user pu
             where dm.id = :id
             """)
     Optional<DirectMessage> findByIdWithUser(String id);

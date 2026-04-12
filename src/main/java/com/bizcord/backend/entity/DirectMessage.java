@@ -37,6 +37,9 @@ public class DirectMessage {
     @ManyToOne(fetch = FetchType.LAZY)
     private Conversation conversation;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private DirectMessage parentMessage;
+
     @Builder.Default
     private boolean deleted = false;
 

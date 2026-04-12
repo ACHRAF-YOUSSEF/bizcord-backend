@@ -13,6 +13,7 @@ public interface DirectMessageMapper {
 
     @Mapping(source = "conversation.id", target = "conversationId")
     @Mapping(target = "reactions", ignore = true)
+    @Mapping(target = "parentMessage", ignore = true)
     DirectMessageResponse toResponse(DirectMessage directMessage);
 
     @Mapping(source = "username2", target = "username")

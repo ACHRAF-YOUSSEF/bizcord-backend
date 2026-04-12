@@ -14,6 +14,7 @@ public interface MessageMapper {
 
     @Mapping(source = "channel.id", target = "channelId")
     @Mapping(target = "reactions", ignore = true)
+    @Mapping(target = "parentMessage", ignore = true)
     MessageResponse toResponse(Message message);
 
     MessageResponse.MemberItem toMemberItem(Member member);
