@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -187,6 +188,56 @@ public class DirectMessageService {
     private Conversation getConversationWithUsers(String conversationId) {
         return conversationRepository.findByIdWithUsers(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
+    }
+
+    @Transactional
+    public DirectMessageResponse togglePin(String conversationId, String messageId, String email) {
+        User currentUser = getCurrentUser(email);
+        Conversation conversation = getConversationWithUsers(conversationId);
+        assertParticipant(conversation, currentUser);
+
+        DirectMessage message = directMessageRepository.findByIdWithUser(messageId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.DIRECT_MESSAGE_NOT_FOUND));
+
+        if (message.isDeleted()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot pin a deleted message");
+        }
+
+        boolean wasPinned = message.getPinnedAt() != null;
+        LocalDateTime originalUpdatedAt = message.getUpdatedAt();
+        if (wasPinned) {
+            message.setPinnedAt(null);
+            message.setPinnedBy(null);
+        } else {
+            message.setPinnedAt(LocalDateTime.now());
+            message.setPinnedBy(currentUser);
+        }
+        directMessageRepository.save(message);
+        message.setUpdatedAt(originalUpdatedAt);
+        directMessageRepository.save(message);
+
+        List<Reaction> reactions = reactionRepository.findAllByDirectMessageId(messageId);
+        DirectMessageResponse response = toResponse(message, reactions, currentUser.getId());
+        broadcast(conversationId, wasPinned ? "UNPIN" : "PIN", response);
+
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DirectMessageResponse> getPinnedMessages(String conversationId, String email) {
+        User currentUser = getCurrentUser(email);
+        Conversation conversation = getConversationWithUsers(conversationId);
+        assertParticipant(conversation, currentUser);
+
+        List<DirectMessage> pinned = directMessageRepository.findPinnedByConversationId(conversationId);
+
+        List<String> dmIds = pinned.stream().map(DirectMessage::getId).toList();
+        Map<String, List<Reaction>> reactionsByDm = reactionRepository.findAllByDirectMessageIdIn(dmIds)
+                .stream().collect(Collectors.groupingBy(r -> r.getDirectMessage().getId()));
+
+        return pinned.stream()
+                .map(dm -> toResponse(dm, reactionsByDm.getOrDefault(dm.getId(), List.of()), currentUser.getId()))
+                .toList();
     }
 
     private void assertParticipant(Conversation conversation, User user) {

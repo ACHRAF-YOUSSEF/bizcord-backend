@@ -49,5 +49,17 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, St
             order by dm.createdAt desc
             """)
     List<DirectMessage> searchByContent(String conversationId, String query, Pageable pageable);
+
+    @Query("""
+            select dm from bizcord_direct_messages dm
+            join fetch dm.user u
+            left join fetch dm.pinnedBy pb
+            left join fetch dm.parentMessage pdm
+            left join fetch pdm.user pu
+            where dm.conversation.id = :conversationId
+              and dm.pinnedAt is not null
+            order by dm.pinnedAt desc
+            """)
+    List<DirectMessage> findPinnedByConversationId(String conversationId);
 }
 

@@ -14,6 +14,8 @@ public interface DirectMessageMapper {
     @Mapping(source = "conversation.id", target = "conversationId")
     @Mapping(target = "reactions", ignore = true)
     @Mapping(target = "parentMessage", ignore = true)
+    @Mapping(target = "pinned", expression = "java(directMessage.getPinnedAt() != null)")
+    @Mapping(target = "pinnedByUsername", expression = "java(directMessage.getPinnedBy() != null ? directMessage.getPinnedBy().getUsername2() : null)")
     DirectMessageResponse toResponse(DirectMessage directMessage);
 
     @Mapping(source = "username2", target = "username")

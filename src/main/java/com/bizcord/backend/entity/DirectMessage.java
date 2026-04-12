@@ -43,6 +43,11 @@ public class DirectMessage {
     @Builder.Default
     private boolean deleted = false;
 
+    private LocalDateTime pinnedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private User pinnedBy;
+
     @CreatedDate
     private LocalDateTime createdAt;
 
