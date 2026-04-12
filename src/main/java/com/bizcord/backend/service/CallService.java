@@ -152,9 +152,10 @@ public class CallService {
         if (peers != null) {
             for (Map<String, Object> peer : peers) {
                 String peerId = (String) peer.get("peerId");
-                userRepository.findById(peerId).ifPresent(u ->
-                        peer.put("username", u.getUsername2())
-                );
+                userRepository.findById(peerId).ifPresent(u -> {
+                        peer.put("username", u.getUsername2());
+                        peer.put("imageUrl", u.getImageUrl());
+                });
             }
         }
 
@@ -164,11 +165,12 @@ public class CallService {
             sessionMap.put(sessionId, new String[]{email, conversationId});
         }
 
-        broadcast(conversationId, "CALL_JOIN", Map.of(
-                "userId", user.getId(),
-                "username", user.getUsername2(),
-                "conversationId", conversationId
-        ));
+        var joinPayload = new java.util.HashMap<String, Object>();
+        joinPayload.put("userId", user.getId());
+        joinPayload.put("username", user.getUsername2());
+        joinPayload.put("conversationId", conversationId);
+        joinPayload.put("imageUrl", user.getImageUrl());
+        broadcast(conversationId, "CALL_JOIN", joinPayload);
 
         return result;
     }
