@@ -10,3 +10,7 @@ spring:
     default: dev
   jpa:
     open-in-view: false
+
+rtc:
+  mediasoup:
+    url: http://localhost:3000

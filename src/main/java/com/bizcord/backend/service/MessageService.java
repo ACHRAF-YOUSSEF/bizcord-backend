@@ -62,7 +62,6 @@ public class MessageService {
             messages = messageRepository.findLatestByChannelId(channelId, page);
         }
 
-        // reverse descending list to return ascending order
         List<Message> sorted = new ArrayList<>(messages).reversed();
 
         List<String> messageIds = sorted.stream().map(Message::getId).toList();
@@ -199,8 +198,6 @@ public class MessageService {
                 .build()).toList();
     }
 
-    // --- Pin/Unpin ---
-
     @Transactional
     public MessageResponse togglePin(String channelId, String messageId, String email) {
         User currentUser = getCurrentUser(email);
@@ -254,8 +251,6 @@ public class MessageService {
                 .map(m -> toResponse(m, reactionsByMessage.getOrDefault(m.getId(), List.of()), currentUser.getId()))
                 .toList();
     }
-
-    // --- helpers ---
 
     private User getCurrentUser(String email) {
         return userRepository.findByEmail(email)
