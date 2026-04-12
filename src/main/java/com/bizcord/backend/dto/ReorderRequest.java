@@ -18,6 +18,8 @@ public class ReorderRequest {
     @Valid
     private List<ReorderItem> categories;
 
+    private List<String> uncategorizedChannelIds;
+
     @Data
     @Builder
     @AllArgsConstructor
