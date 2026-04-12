@@ -140,6 +140,16 @@ public class ChannelCategoryService {
             }
         }
 
+        List<String> uncategorizedIds = request.getUncategorizedChannelIds();
+        if (uncategorizedIds != null) {
+            for (int i = 0; i < uncategorizedIds.size(); i++) {
+                Channel ch = channelMap.get(uncategorizedIds.get(i));
+                if (ch == null) continue;
+                ch.setCategory(null);
+                ch.setPosition(i);
+            }
+        }
+
         categoryRepository.saveAll(categories);
         channelRepository.saveAll(channels);
 
