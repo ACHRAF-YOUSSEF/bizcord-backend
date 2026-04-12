@@ -3,6 +3,8 @@
 ## Build Images
 
 ```bash
+docker build -t achrafyoussef/bizcord-mediasoup:latest .
+
 docker build -t achrafyoussef/bizcord-backend:latest .
 
 docker build -t achrafyoussef/bizcord-frontend:latest .
@@ -14,6 +16,8 @@ docker build -t achrafyoussef/bizcord-frontend:latest .
 docker compose up --build -d
 
 docker compose up -d
+
+docker compose --env-file=.env up -d
 
 docker compose down
 
