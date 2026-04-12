@@ -3,6 +3,7 @@ package com.bizcord.backend.service;
 import com.bizcord.backend.dto.DirectMessageCreateRequest;
 import com.bizcord.backend.dto.DirectMessageResponse;
 import com.bizcord.backend.dto.DirectMessageUpdateRequest;
+import com.bizcord.backend.dto.DmSearchResponse;
 import com.bizcord.backend.dto.WebSocketMessage;
 import com.bizcord.backend.entity.Conversation;
 import com.bizcord.backend.entity.DirectMessage;
@@ -146,6 +147,30 @@ public class DirectMessageService {
     private User getCurrentUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public List<DmSearchResponse> searchMessages(String conversationId, String query, int page, String email) {
+        User currentUser = getCurrentUser(email);
+        Conversation conversation = getConversationWithUsers(conversationId);
+        assertParticipant(conversation, currentUser);
+
+        List<DirectMessage> messages = directMessageRepository.searchByContent(
+                conversationId, query, PageRequest.of(page, 20));
+
+        return messages.stream().map(dm -> DmSearchResponse.builder()
+                .id(dm.getId())
+                .content(dm.getContent())
+                .attachments(dm.getAttachments())
+                .conversationId(conversationId)
+                .createdAt(dm.getCreatedAt())
+                .user(DmSearchResponse.UserItem.builder()
+                        .id(dm.getUser().getId())
+                        .fullName(dm.getUser().getFullName())
+                        .username(dm.getUser().getUsername())
+                        .imageUrl(dm.getUser().getImageUrl())
+                        .build())
+                .build()).toList();
     }
 
     private Conversation getConversationWithUsers(String conversationId) {
