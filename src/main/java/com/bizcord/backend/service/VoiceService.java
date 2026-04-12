@@ -59,9 +59,10 @@ public class VoiceService {
         if (peers != null) {
             for (Map<String, Object> peer : peers) {
                 String peerId = (String) peer.get("peerId");
-                userRepository.findById(peerId).ifPresent(u ->
-                        peer.put("username", u.getUsername2())
-                );
+                userRepository.findById(peerId).ifPresent(u -> {
+                        peer.put("username", u.getUsername2());
+                        peer.put("imageUrl", u.getImageUrl());
+                });
             }
         }
 
@@ -71,11 +72,11 @@ public class VoiceService {
             sessionMap.put(sessionId, new String[]{email, channelId});
         }
 
-        var joinPayload = Map.of(
-                "userId", user.getId(),
-                "username", user.getUsername2(),
-                "channelId", channelId
-        );
+        var joinPayload = new java.util.HashMap<String, Object>();
+        joinPayload.put("userId", user.getId());
+        joinPayload.put("username", user.getUsername2());
+        joinPayload.put("channelId", channelId);
+        joinPayload.put("imageUrl", user.getImageUrl());
         broadcast(channelId, "VOICE_JOIN", joinPayload);
         broadcastServer(channel.getServer().getId(), "VOICE_JOIN", joinPayload);
 
@@ -195,9 +196,13 @@ public class VoiceService {
                 if (userIds != null && !userIds.isEmpty()) {
                     List<Map<String, String>> list = new java.util.ArrayList<>();
                     for (String uid : userIds) {
-                        userRepository.findById(uid).ifPresent(u ->
-                                list.add(Map.of("userId", u.getId(), "username", u.getUsername2()))
-                        );
+                        userRepository.findById(uid).ifPresent(u -> {
+                                var participant = new java.util.HashMap<String, String>();
+                                participant.put("userId", u.getId());
+                                participant.put("username", u.getUsername2());
+                                participant.put("imageUrl", u.getImageUrl());
+                                list.add(participant);
+                        });
                     }
                     if (!list.isEmpty()) {
                         result.put(chId, list);
