@@ -34,7 +34,7 @@ public interface MessageRepository extends JpaRepository<Message, String> {
             select m from bizcord_messages m
             join fetch m.member mb
             join fetch mb.user
-            where m.channel.id = :id
+            where m.id = :id
             """)
     Optional<Message> findByIdWithMemberAndUser(String id);
 
