@@ -40,17 +40,7 @@ public class Member {
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Message> messages = new ArrayList<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<DirectMessage> directMessages = new ArrayList<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "member1", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Conversation> conversationsInitiated = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "member2", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Conversation> conversationsReceived = new ArrayList<>();
 
     @CreatedDate
     private LocalDateTime createdAt;

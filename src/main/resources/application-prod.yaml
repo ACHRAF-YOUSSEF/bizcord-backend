@@ -39,10 +39,13 @@ app:
     base-directory: ${APP_UPLOAD_BASE_DIRECTORY:uploads}
     public-base-path: ${APP_UPLOAD_PUBLIC_BASE_PATH:/uploads}
   cookie:
-    secure: true
+    secure: ${APP_COOKIE_SECURE:true}
     same-site: Strict
     path: /api/auth
     max-age: 604800
   jwt:
     secret-key: ${APP_JWT_SECRET_KEY}
     access-token-expiry-ms: 900000
+  mediasoup:
+    url: ${MEDIASOUP_URL:http://mediasoup:3000}
+    api-secret: ${MEDIASOUP_API_SECRET:bizcord-mediasoup-secret}

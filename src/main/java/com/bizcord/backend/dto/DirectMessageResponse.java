@@ -1,6 +1,5 @@
 package com.bizcord.backend.dto;
 
-import com.bizcord.backend.entity.MemberRole;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,11 +12,24 @@ public class DirectMessageResponse {
     private String id;
     private String content;
     private List<String> attachments;
-    private MemberItem member;
+    private UserItem user;
     private String conversationId;
     private boolean deleted;
+    private boolean pinned;
+    private LocalDateTime pinnedAt;
+    private String pinnedByUsername;
+    private List<ReactionGroup> reactions;
+    private ParentMessagePreview parentMessage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @Data
+    @Builder
+    public static class ParentMessagePreview {
+        private String id;
+        private String content;
+        private String senderName;
+    }
 
     @Data
     @Builder
@@ -31,11 +43,11 @@ public class DirectMessageResponse {
 
     @Data
     @Builder
-    public static class MemberItem {
-        private String id;
-        private String name;
-        private MemberRole role;
-        private UserItem user;
+    public static class ReactionGroup {
+        private String emoji;
+        private int count;
+        private List<String> userIds;
+        private boolean me;
     }
 }
 

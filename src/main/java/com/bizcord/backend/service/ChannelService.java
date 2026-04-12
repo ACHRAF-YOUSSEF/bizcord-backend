@@ -3,11 +3,8 @@ package com.bizcord.backend.service;
 import com.bizcord.backend.dto.ChannelCreateRequest;
 import com.bizcord.backend.dto.ChannelUpdateRequest;
 import com.bizcord.backend.dto.ServerResponse;
-import com.bizcord.backend.entity.Channel;
-import com.bizcord.backend.entity.Member;
-import com.bizcord.backend.entity.MemberRole;
-import com.bizcord.backend.entity.Server;
-import com.bizcord.backend.entity.User;
+import com.bizcord.backend.entity.*;
+import com.bizcord.backend.repository.ChannelCategoryRepository;
 import com.bizcord.backend.repository.ChannelRepository;
 import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.ServerRepository;
@@ -27,6 +24,7 @@ public class ChannelService {
     private static final String GENERAL_CHANNEL = "general";
 
     private final ChannelRepository channelRepository;
+    private final ChannelCategoryRepository categoryRepository;
     private final MemberRepository memberRepository;
     private final ServerRepository serverRepository;
     private final UserRepository userRepository;
@@ -66,43 +64,7 @@ public class ChannelService {
 
         channelRepository.save(channel);
 
-        Server server = serverRepository.findByIdWithOwner(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
-
-        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
-        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
-
-        return ServerResponse.builder()
-                .id(server.getId())
-                .name(server.getName())
-                .imageUrl(server.getImageUrl())
-                .inviteCode(server.getInviteCode())
-                .userId(server.getUser().getId())
-                .members(members.stream().map(member -> ServerResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .serverId(member.getServer().getId())
-                        .user(ServerResponse.UserItem.builder()
-                                .id(member.getUser().getId())
-                                .username(member.getUser().getUsername2())
-                                .email(member.getUser().getEmail())
-                                .fullName(member.getUser().getFullName())
-                                .imageUrl(member.getUser().getImageUrl())
-                                .createdAt(member.getUser().getCreatedAt())
-                                .updatedAt(member.getUser().getUpdatedAt())
-                                .build())
-                        .build()).toList())
-                .channels(channels.stream().map(ch -> ServerResponse.ChannelItem.builder()
-                        .id(ch.getId())
-                        .name(ch.getName())
-                        .type(ch.getType())
-                        .userId(ch.getUser().getId())
-                        .serverId(ch.getServer().getId())
-                        .build()).toList())
-                .createdAt(server.getCreatedAt())
-                .updatedAt(server.getUpdatedAt())
-                .build();
+        return buildFullResponse(serverId);
     }
 
     @Transactional
@@ -130,43 +92,7 @@ public class ChannelService {
 
         channelRepository.delete(channel);
 
-        Server server = serverRepository.findByIdWithOwner(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
-
-        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
-        List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
-
-        return ServerResponse.builder()
-                .id(server.getId())
-                .name(server.getName())
-                .imageUrl(server.getImageUrl())
-                .inviteCode(server.getInviteCode())
-                .userId(server.getUser().getId())
-                .members(members.stream().map(member -> ServerResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .serverId(member.getServer().getId())
-                        .user(ServerResponse.UserItem.builder()
-                                .id(member.getUser().getId())
-                                .username(member.getUser().getUsername2())
-                                .email(member.getUser().getEmail())
-                                .fullName(member.getUser().getFullName())
-                                .imageUrl(member.getUser().getImageUrl())
-                                .createdAt(member.getUser().getCreatedAt())
-                                .updatedAt(member.getUser().getUpdatedAt())
-                                .build())
-                        .build()).toList())
-                .channels(channels.stream().map(ch -> ServerResponse.ChannelItem.builder()
-                        .id(ch.getId())
-                        .name(ch.getName())
-                        .type(ch.getType())
-                        .userId(ch.getUser().getId())
-                        .serverId(ch.getServer().getId())
-                        .build()).toList())
-                .createdAt(server.getCreatedAt())
-                .updatedAt(server.getUpdatedAt())
-                .build();
+        return buildFullResponse(serverId);
     }
 
     @Transactional
@@ -184,50 +110,36 @@ public class ChannelService {
         Server server = serverRepository.findByIdWithOwner(serverId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
 
+        ChannelCategory category = null;
+        if (request.getCategoryId() != null) {
+            category = categoryRepository.findByIdWithServer(request.getCategoryId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CATEGORY_NOT_FOUND));
+            if (!category.getServer().getId().equals(serverId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.CATEGORY_WRONG_SERVER);
+            }
+        }
+
         Channel channel = Channel.builder()
                 .name(request.getName())
                 .type(request.getType())
                 .user(currentUser)
                 .server(server)
+                .category(category)
                 .build();
 
         server.getChannels().add(channel);
         serverRepository.saveAndFlush(server);
 
+        return buildFullResponse(serverId);
+    }
+
+    private ServerResponse buildFullResponse(String serverId) {
+        Server server = serverRepository.findByIdWithOwner(serverId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.SERVER_NOT_FOUND));
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
-
-        return ServerResponse.builder()
-                .id(server.getId())
-                .name(server.getName())
-                .imageUrl(server.getImageUrl())
-                .inviteCode(server.getInviteCode())
-                .userId(server.getUser().getId())
-                .members(members.stream().map(member -> ServerResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .serverId(member.getServer().getId())
-                        .user(ServerResponse.UserItem.builder()
-                                .id(member.getUser().getId())
-                                .username(member.getUser().getUsername2())
-                                .email(member.getUser().getEmail())
-                                .fullName(member.getUser().getFullName())
-                                .imageUrl(member.getUser().getImageUrl())
-                                .createdAt(member.getUser().getCreatedAt())
-                                .updatedAt(member.getUser().getUpdatedAt())
-                                .build())
-                        .build()).toList())
-                .channels(channels.stream().map(ch -> ServerResponse.ChannelItem.builder()
-                        .id(ch.getId())
-                        .name(ch.getName())
-                        .type(ch.getType())
-                        .userId(ch.getUser().getId())
-                        .serverId(ch.getServer().getId())
-                        .build()).toList())
-                .createdAt(server.getCreatedAt())
-                .updatedAt(server.getUpdatedAt())
-                .build();
+        List<ChannelCategory> categories = categoryRepository.findAllByServerIdWithServer(serverId);
+        return ChannelCategoryService.toResponse(server, members, channels, categories);
     }
 }
 

@@ -45,5 +45,8 @@ app:
     path: /api/auth
     max-age: 604800
   jwt:
-    secret-key: ${APP_JWT_SECRET_KEY:597133743677397A24432646294A404E635266556A586E5A7234753778214125}
+    secret-key: ${APP_JWT_SECRET_KEY:app-jwt-secret-key}
     access-token-expiry-ms: 900000
+  mediasoup:
+    url: http://localhost:3000
+    api-secret: ${API_SECRET:bizcord-mediasoup-secret}

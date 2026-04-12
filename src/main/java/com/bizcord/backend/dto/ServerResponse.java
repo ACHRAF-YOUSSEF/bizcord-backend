@@ -2,6 +2,7 @@ package com.bizcord.backend.dto;
 
 import com.bizcord.backend.entity.ChannelType;
 import com.bizcord.backend.entity.MemberRole;
+import com.bizcord.backend.entity.UserStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -16,8 +17,10 @@ public class ServerResponse {
     private String imageUrl;
     private String inviteCode;
     private String userId;
+    private LocalDateTime inviteExpiresAt;
     private List<MemberItem> members;
     private List<ChannelItem> channels;
+    private List<CategoryItem> categories;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -29,6 +32,7 @@ public class ServerResponse {
         private String email;
         private String fullName;
         private String imageUrl;
+        private UserStatus status;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
     }
@@ -51,6 +55,26 @@ public class ServerResponse {
         private ChannelType type;
         private String serverId;
         private String userId;
+        private String categoryId;
+        private int position;
+    }
+
+    @Data
+    @Builder
+    public static class CategoryItem {
+        private String id;
+        private String name;
+        private int position;
+        private String serverId;
+        private boolean defaultCategory;
+    }
+
+    @Data
+    @Builder
+    public static class BannedUserItem {
+        private String id;
+        private UserItem user;
+        private LocalDateTime createdAt;
     }
 }
 

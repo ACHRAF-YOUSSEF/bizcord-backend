@@ -20,5 +20,7 @@ public class ChannelCreateRequest {
 
     @NotNull
     private ChannelType type;
+
+    private String categoryId;
 }
 

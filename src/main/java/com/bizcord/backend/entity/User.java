@@ -17,8 +17,8 @@ import java.util.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"servers", "members", "channels"})
-@ToString(exclude = {"servers", "members", "channels"})
+@EqualsAndHashCode(exclude = {"servers", "members", "channels", "directMessages", "conversationsInitiated", "conversationsReceived"})
+@ToString(exclude = {"servers", "members", "channels", "directMessages", "conversationsInitiated", "conversationsReceived"})
 @Entity(name = "bizcord_users")
 @EntityListeners(AuditingEntityListener.class)
 public class User implements UserDetails {
@@ -54,6 +54,23 @@ public class User implements UserDetails {
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Channel> channels = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DirectMessage> directMessages = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user1")
+    private List<Conversation> conversationsInitiated = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user2")
+    private List<Conversation> conversationsReceived = new ArrayList<>();
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(255) not null default 'OFFLINE'")
+    private UserStatus status = UserStatus.OFFLINE;
 
     @CreatedDate
     private LocalDateTime createdAt;

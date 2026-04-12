@@ -5,6 +5,7 @@ import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
 import com.bizcord.backend.dto.DirectMessageCreateRequest;
 import com.bizcord.backend.dto.DirectMessageResponse;
 import com.bizcord.backend.dto.DirectMessageUpdateRequest;
+import com.bizcord.backend.dto.DmSearchResponse;
 import com.bizcord.backend.service.DirectMessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -69,6 +70,36 @@ public class DirectMessageController {
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
                 directMessageService.deleteMessage(conversationId, messageId, userDetails.getUsername()));
+    }
+
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
+    @GetMapping("/search")
+    public ResponseEntity<List<DmSearchResponse>> searchMessages(
+            @PathVariable String conversationId,
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+                directMessageService.searchMessages(conversationId, q, page, userDetails.getUsername()));
+    }
+
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
+    @PostMapping("/{messageId}/pin")
+    public ResponseEntity<DirectMessageResponse> togglePin(
+            @PathVariable String conversationId,
+            @PathVariable String messageId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+                directMessageService.togglePin(conversationId, messageId, userDetails.getUsername()));
+    }
+
+    @RateLimit(limit = 60, keyType = RateLimitKeyType.UID)
+    @GetMapping("/pinned")
+    public ResponseEntity<List<DirectMessageResponse>> getPinnedMessages(
+            @PathVariable String conversationId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+                directMessageService.getPinnedMessages(conversationId, userDetails.getUsername()));
     }
 }
 

@@ -3,13 +3,16 @@ package com.bizcord.backend.service;
 import com.bizcord.backend.dto.DirectMessageCreateRequest;
 import com.bizcord.backend.dto.DirectMessageResponse;
 import com.bizcord.backend.dto.DirectMessageUpdateRequest;
+import com.bizcord.backend.dto.DmSearchResponse;
 import com.bizcord.backend.dto.WebSocketMessage;
 import com.bizcord.backend.entity.Conversation;
 import com.bizcord.backend.entity.DirectMessage;
-import com.bizcord.backend.entity.Member;
+import com.bizcord.backend.entity.Reaction;
 import com.bizcord.backend.entity.User;
+import com.bizcord.backend.mapper.DirectMessageMapper;
 import com.bizcord.backend.repository.ConversationRepository;
 import com.bizcord.backend.repository.DirectMessageRepository;
+import com.bizcord.backend.repository.ReactionRepository;
 import com.bizcord.backend.repository.UserRepository;
 import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +23,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,12 +37,14 @@ public class DirectMessageService {
     private final DirectMessageRepository directMessageRepository;
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
+    private final ReactionRepository reactionRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<DirectMessageResponse> getMessages(String conversationId, String cursor, String email) {
         User currentUser = getCurrentUser(email);
-        Conversation conversation = getConversationWithMembers(conversationId);
+        Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
 
         List<DirectMessage> messages;
@@ -53,13 +61,17 @@ public class DirectMessageService {
 
         List<DirectMessage> reversed = new ArrayList<>(messages).reversed();
 
-        return reversed.stream().map(this::toResponse).toList();
+        List<String> dmIds = reversed.stream().map(DirectMessage::getId).toList();
+        Map<String, List<Reaction>> reactionsByDm = reactionRepository.findAllByDirectMessageIdIn(dmIds)
+                .stream().collect(Collectors.groupingBy(r -> r.getDirectMessage().getId()));
+
+        return reversed.stream().map(dm -> toResponse(dm, reactionsByDm.getOrDefault(dm.getId(), List.of()), currentUser.getId())).toList();
     }
 
     @Transactional
     public DirectMessageResponse createMessage(String conversationId, DirectMessageCreateRequest request, String email) {
         User currentUser = getCurrentUser(email);
-        Conversation conversation = getConversationWithMembers(conversationId);
+        Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
 
         boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
@@ -69,22 +81,30 @@ public class DirectMessageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.DIRECT_MESSAGE_EMPTY);
         }
 
-        Member senderMember = getSenderMember(conversation, currentUser);
-
         DirectMessage message = DirectMessage.builder()
                 .content(request.getContent())
                 .attachments(hasAttachments ? request.getAttachments() : new ArrayList<>())
-                .member(senderMember)
+                .user(currentUser)
                 .conversation(conversation)
                 .build();
 
+        if (request.getParentMessageId() != null && !request.getParentMessageId().isBlank()) {
+            DirectMessage parent = directMessageRepository.findById(request.getParentMessageId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parent message not found"));
+            message.setParentMessage(parent);
+        }
+
         directMessageRepository.save(message);
 
-        DirectMessage saved = directMessageRepository.findByIdWithMemberAndUser(message.getId())
+        DirectMessage saved = directMessageRepository.findByIdWithUser(message.getId())
                 .orElseThrow();
 
-        DirectMessageResponse response = toResponse(saved);
+        DirectMessageResponse response = toResponse(saved, List.of(), currentUser.getId());
         broadcast(conversationId, "NEW", response);
+
+        User otherUser = conversation.getUser1().getId().equals(currentUser.getId())
+                ? conversation.getUser2() : conversation.getUser1();
+        notificationService.notifyDirectMessage(currentUser, otherUser, conversationId, request.getContent());
 
         return response;
     }
@@ -92,20 +112,21 @@ public class DirectMessageService {
     @Transactional
     public DirectMessageResponse updateMessage(String conversationId, String messageId, DirectMessageUpdateRequest request, String email) {
         User currentUser = getCurrentUser(email);
-        Conversation conversation = getConversationWithMembers(conversationId);
+        Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
 
-        DirectMessage message = directMessageRepository.findByIdWithMemberAndUser(messageId)
+        DirectMessage message = directMessageRepository.findByIdWithUser(messageId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.DIRECT_MESSAGE_NOT_FOUND));
 
-        if (!message.getMember().getUser().getId().equals(currentUser.getId())) {
+        if (!message.getUser().getId().equals(currentUser.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.DIRECT_MESSAGE_NOT_OWNER);
         }
 
         message.setContent(request.getContent());
         directMessageRepository.save(message);
 
-        DirectMessageResponse response = toResponse(message);
+        List<Reaction> reactions = reactionRepository.findAllByDirectMessageId(messageId);
+        DirectMessageResponse response = toResponse(message, reactions, currentUser.getId());
         broadcast(conversationId, "UPDATE", response);
 
         return response;
@@ -114,13 +135,13 @@ public class DirectMessageService {
     @Transactional
     public DirectMessageResponse deleteMessage(String conversationId, String messageId, String email) {
         User currentUser = getCurrentUser(email);
-        Conversation conversation = getConversationWithMembers(conversationId);
+        Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
 
-        DirectMessage message = directMessageRepository.findByIdWithMemberAndUser(messageId)
+        DirectMessage message = directMessageRepository.findByIdWithUser(messageId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.DIRECT_MESSAGE_NOT_FOUND));
 
-        if (!message.getMember().getUser().getId().equals(currentUser.getId())) {
+        if (!message.getUser().getId().equals(currentUser.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.DIRECT_MESSAGE_NOT_OWNER);
         }
 
@@ -129,7 +150,7 @@ public class DirectMessageService {
         message.setAttachments(new ArrayList<>());
         directMessageRepository.save(message);
 
-        DirectMessageResponse response = toResponse(message);
+        DirectMessageResponse response = toResponse(message, List.of(), currentUser.getId());
         broadcast(conversationId, "DELETE", response);
 
         return response;
@@ -140,24 +161,91 @@ public class DirectMessageService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
     }
 
-    private Conversation getConversationWithMembers(String conversationId) {
-        return conversationRepository.findByIdWithMembers(conversationId)
+    @Transactional(readOnly = true)
+    public List<DmSearchResponse> searchMessages(String conversationId, String query, int page, String email) {
+        User currentUser = getCurrentUser(email);
+        Conversation conversation = getConversationWithUsers(conversationId);
+        assertParticipant(conversation, currentUser);
+
+        List<DirectMessage> messages = directMessageRepository.searchByContent(
+                conversationId, query, PageRequest.of(page, 20));
+
+        return messages.stream().map(dm -> DmSearchResponse.builder()
+                .id(dm.getId())
+                .content(dm.getContent())
+                .attachments(dm.getAttachments())
+                .conversationId(conversationId)
+                .createdAt(dm.getCreatedAt())
+                .user(DmSearchResponse.UserItem.builder()
+                        .id(dm.getUser().getId())
+                        .fullName(dm.getUser().getFullName())
+                        .username(dm.getUser().getUsername2())
+                        .imageUrl(dm.getUser().getImageUrl())
+                        .build())
+                .build()).toList();
+    }
+
+    private Conversation getConversationWithUsers(String conversationId) {
+        return conversationRepository.findByIdWithUsers(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
     }
 
+    @Transactional
+    public DirectMessageResponse togglePin(String conversationId, String messageId, String email) {
+        User currentUser = getCurrentUser(email);
+        Conversation conversation = getConversationWithUsers(conversationId);
+        assertParticipant(conversation, currentUser);
+
+        DirectMessage message = directMessageRepository.findByIdWithUser(messageId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.DIRECT_MESSAGE_NOT_FOUND));
+
+        if (message.isDeleted()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot pin a deleted message");
+        }
+
+        boolean wasPinned = message.getPinnedAt() != null;
+        LocalDateTime originalUpdatedAt = message.getUpdatedAt();
+        if (wasPinned) {
+            message.setPinnedAt(null);
+            message.setPinnedBy(null);
+        } else {
+            message.setPinnedAt(LocalDateTime.now());
+            message.setPinnedBy(currentUser);
+        }
+        directMessageRepository.save(message);
+        message.setUpdatedAt(originalUpdatedAt);
+        directMessageRepository.save(message);
+
+        List<Reaction> reactions = reactionRepository.findAllByDirectMessageId(messageId);
+        DirectMessageResponse response = toResponse(message, reactions, currentUser.getId());
+        broadcast(conversationId, wasPinned ? "UNPIN" : "PIN", response);
+
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DirectMessageResponse> getPinnedMessages(String conversationId, String email) {
+        User currentUser = getCurrentUser(email);
+        Conversation conversation = getConversationWithUsers(conversationId);
+        assertParticipant(conversation, currentUser);
+
+        List<DirectMessage> pinned = directMessageRepository.findPinnedByConversationId(conversationId);
+
+        List<String> dmIds = pinned.stream().map(DirectMessage::getId).toList();
+        Map<String, List<Reaction>> reactionsByDm = reactionRepository.findAllByDirectMessageIdIn(dmIds)
+                .stream().collect(Collectors.groupingBy(r -> r.getDirectMessage().getId()));
+
+        return pinned.stream()
+                .map(dm -> toResponse(dm, reactionsByDm.getOrDefault(dm.getId(), List.of()), currentUser.getId()))
+                .toList();
+    }
+
     private void assertParticipant(Conversation conversation, User user) {
-        boolean isParticipant = conversation.getMember1().getUser().getId().equals(user.getId())
-                || conversation.getMember2().getUser().getId().equals(user.getId());
+        boolean isParticipant = conversation.getUser1().getId().equals(user.getId())
+                || conversation.getUser2().getId().equals(user.getId());
         if (!isParticipant) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CONVERSATION_NOT_A_PARTICIPANT);
         }
-    }
-
-    private Member getSenderMember(Conversation conversation, User user) {
-        if (conversation.getMember1().getUser().getId().equals(user.getId())) {
-            return conversation.getMember1();
-        }
-        return conversation.getMember2();
     }
 
     private void broadcast(String conversationId, String type, DirectMessageResponse data) {
@@ -166,31 +254,33 @@ public class DirectMessageService {
                 new WebSocketMessage(type, data));
     }
 
-    private DirectMessageResponse toResponse(DirectMessage dm) {
-        Member member = dm.getMember();
-        User user = member.getUser();
+    private DirectMessageResponse toResponse(DirectMessage dm, List<Reaction> reactions, String currentUserId) {
+        Map<String, List<Reaction>> grouped = reactions.stream()
+                .collect(Collectors.groupingBy(Reaction::getEmoji));
 
-        return DirectMessageResponse.builder()
-                .id(dm.getId())
-                .content(dm.getContent())
-                .attachments(dm.getAttachments())
-                .member(DirectMessageResponse.MemberItem.builder()
-                        .id(member.getId())
-                        .name(member.getName())
-                        .role(member.getRole())
-                        .user(DirectMessageResponse.UserItem.builder()
-                                .id(user.getId())
-                                .fullName(user.getFullName())
-                                .username(user.getUsername2())
-                                .email(user.getEmail())
-                                .imageUrl(user.getImageUrl())
-                                .build())
+        List<DirectMessageResponse.ReactionGroup> reactionGroups = grouped.entrySet().stream()
+                .map(e -> DirectMessageResponse.ReactionGroup.builder()
+                        .emoji(e.getKey())
+                        .count(e.getValue().size())
+                        .userIds(e.getValue().stream().map(r -> r.getUser().getId()).toList())
+                        .me(e.getValue().stream().anyMatch(r -> r.getUser().getId().equals(currentUserId)))
                         .build())
-                .conversationId(dm.getConversation().getId())
-                .deleted(dm.isDeleted())
-                .createdAt(dm.getCreatedAt())
-                .updatedAt(dm.getUpdatedAt())
-                .build();
+                .toList();
+
+        DirectMessageResponse response = DirectMessageMapper.INSTANCE.toResponse(dm);
+        response.setReactions(reactionGroups);
+        if (dm.getParentMessage() != null) {
+            DirectMessage parent = dm.getParentMessage();
+            String senderName = parent.getUser() != null
+                    ? parent.getUser().getUsername2()
+                    : "Unknown";
+            response.setParentMessage(DirectMessageResponse.ParentMessagePreview.builder()
+                    .id(parent.getId())
+                    .content(parent.isDeleted() ? null : parent.getContent())
+                    .senderName(senderName)
+                    .build());
+        }
+        return response;
     }
 }
 

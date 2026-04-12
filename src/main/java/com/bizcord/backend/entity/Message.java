@@ -36,8 +36,16 @@ public class Message {
     @ManyToOne(fetch = FetchType.LAZY)
     private Channel channel;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Message parentMessage;
+
     @Builder.Default
     private boolean deleted = false;
+
+    private LocalDateTime pinnedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private User pinnedBy;
 
     @CreatedDate
     private LocalDateTime createdAt;

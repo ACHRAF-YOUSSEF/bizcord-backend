@@ -15,8 +15,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"server", "user"})
-@ToString(exclude = {"server", "user"})
+@EqualsAndHashCode(exclude = {"server", "user", "category"})
+@ToString(exclude = {"server", "user", "category"})
 @Entity(name = "bizcord_channels")
 @EntityListeners(AuditingEntityListener.class)
 public class Channel {
@@ -30,11 +30,16 @@ public class Channel {
     @Enumerated(EnumType.STRING)
     private ChannelType type = ChannelType.TEXT;
 
+    private int position;
+
     @ManyToOne(fetch = FetchType.LAZY)
     private Server server;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private ChannelCategory category;
 
     @Builder.Default
     @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)

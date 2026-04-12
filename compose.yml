@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: bizcord
+    ports:
+      - "5432:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     expose:
@@ -23,18 +25,42 @@ services:
     container_name: bizcord-backend
     restart: unless-stopped
     depends_on:
+      mediasoup:
+        condition: service_started
       postgres:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       APP_CORS_ALLOWED_ORIGIN_PATTERNS: "http://localhost:8080"
+      APP_COOKIE_SECURE: "true"
       DB_URL: jdbc:postgresql://postgres:5432/bizcord
       DB_USERNAME: admin
       DB_PASSWORD: admin
+      API_SECRET: ${APP_API_SECRET:-bizcord-api-secret}
+      APP_JWT_SECRET_KEY: ${APP_JWT_SECRET_KEY:-bizcord-secret-key}
+      APP_MEDIASOUP_API_SECRET: ${MEDIASOUP_API_SECRET:-bizcord-mediasoup-secret}
+      APP_MEDIASOUP_URL: ${MEDIASOUP_URL:-http://bizcord-mediasoup:3000}
     volumes:
       - ./uploads:/app/uploads
     expose:
       - "8080"
+
+  mediasoup:
+    image: achrafyoussef/bizcord-mediasoup:latest
+    container_name: bizcord-mediasoup
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      LISTEN_IP: 0.0.0.0
+      ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:-127.0.0.1}
+      RTC_MIN_PORT: ${MEDIASOUP_RTC_MIN_PORT:-52000}
+      RTC_MAX_PORT: ${MEDIASOUP_RTC_MAX_PORT:-52999}
+      API_SECRET: ${MEDIASOUP_API_SECRET:-bizcord-mediasoup-secret}
+    expose:
+      - "3000"
+    ports:
+      - "${MEDIASOUP_RTC_MIN_PORT:-52000}-${MEDIASOUP_RTC_MAX_PORT:-52999}:${MEDIASOUP_RTC_MIN_PORT:-52000}-${MEDIASOUP_RTC_MAX_PORT:-52999}/udp"
+      - "${MEDIASOUP_RTC_MIN_PORT:-52000}-${MEDIASOUP_RTC_MAX_PORT:-52999}:${MEDIASOUP_RTC_MIN_PORT:-52000}-${MEDIASOUP_RTC_MAX_PORT:-52999}/tcp"
 
   frontend:
     image: achrafyoussef/bizcord-frontend:latest
@@ -45,4 +71,4 @@ services:
     depends_on:
       - backend
     ports:
-      - "8080:80"
+      - "8080:8080"
