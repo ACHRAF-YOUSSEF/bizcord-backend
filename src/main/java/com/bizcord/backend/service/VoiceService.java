@@ -76,6 +76,7 @@ public class VoiceService {
         joinPayload.put("userId", user.getId());
         joinPayload.put("username", user.getUsername2());
         joinPayload.put("channelId", channelId);
+        joinPayload.put("channelName", channel.getName());
         joinPayload.put("imageUrl", user.getImageUrl());
         broadcast(channelId, "VOICE_JOIN", joinPayload);
         broadcastServer(channel.getServer().getId(), "VOICE_JOIN", joinPayload);
