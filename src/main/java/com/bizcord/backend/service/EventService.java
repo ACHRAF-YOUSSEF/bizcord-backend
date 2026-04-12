@@ -2,6 +2,7 @@ package com.bizcord.backend.service;
 
 import com.bizcord.backend.dto.*;
 import com.bizcord.backend.entity.*;
+import com.bizcord.backend.mapper.EventMapper;
 import com.bizcord.backend.repository.*;
 import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
@@ -238,32 +239,6 @@ public class EventService {
     }
 
     private EventResponse toResponse(Event event, List<EventAttendee> attendees) {
-        User creator = event.getCreator();
-        return EventResponse.builder()
-                .id(event.getId())
-                .title(event.getTitle())
-                .description(event.getDescription())
-                .startTime(event.getStartTime())
-                .endTime(event.getEndTime())
-                .location(event.getLocation())
-                .color(event.getColor())
-                .serverId(event.getServer().getId())
-                .creator(EventResponse.CreatorItem.builder()
-                        .id(creator.getId())
-                        .fullName(creator.getFullName())
-                        .username(creator.getUsername2())
-                        .imageUrl(creator.getImageUrl())
-                        .build())
-                .attendees(attendees.stream().map(a -> EventResponse.AttendeeItem.builder()
-                        .id(a.getId())
-                        .userId(a.getUser().getId())
-                        .fullName(a.getUser().getFullName())
-                        .username(a.getUser().getUsername2())
-                        .imageUrl(a.getUser().getImageUrl())
-                        .status(a.getStatus())
-                        .build()).toList())
-                .createdAt(event.getCreatedAt())
-                .updatedAt(event.getUpdatedAt())
-                .build();
+        return EventMapper.INSTANCE.toResponse(event, attendees);
     }
 }

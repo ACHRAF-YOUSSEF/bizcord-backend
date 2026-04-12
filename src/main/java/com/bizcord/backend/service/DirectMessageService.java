@@ -8,6 +8,7 @@ import com.bizcord.backend.entity.Conversation;
 import com.bizcord.backend.entity.DirectMessage;
 import com.bizcord.backend.entity.Reaction;
 import com.bizcord.backend.entity.User;
+import com.bizcord.backend.mapper.DirectMessageMapper;
 import com.bizcord.backend.repository.ConversationRepository;
 import com.bizcord.backend.repository.DirectMessageRepository;
 import com.bizcord.backend.repository.ReactionRepository;
@@ -167,8 +168,6 @@ public class DirectMessageService {
     }
 
     private DirectMessageResponse toResponse(DirectMessage dm, List<Reaction> reactions, String currentUserId) {
-        User user = dm.getUser();
-
         Map<String, List<Reaction>> grouped = reactions.stream()
                 .collect(Collectors.groupingBy(Reaction::getEmoji));
 
@@ -181,23 +180,9 @@ public class DirectMessageService {
                         .build())
                 .toList();
 
-        return DirectMessageResponse.builder()
-                .id(dm.getId())
-                .content(dm.getContent())
-                .attachments(dm.getAttachments())
-                .user(DirectMessageResponse.UserItem.builder()
-                        .id(user.getId())
-                        .fullName(user.getFullName())
-                        .username(user.getUsername2())
-                        .email(user.getEmail())
-                        .imageUrl(user.getImageUrl())
-                        .build())
-                .conversationId(dm.getConversation().getId())
-                .deleted(dm.isDeleted())
-                .reactions(reactionGroups)
-                .createdAt(dm.getCreatedAt())
-                .updatedAt(dm.getUpdatedAt())
-                .build();
+        DirectMessageResponse response = DirectMessageMapper.INSTANCE.toResponse(dm);
+        response.setReactions(reactionGroups);
+        return response;
     }
 }
 

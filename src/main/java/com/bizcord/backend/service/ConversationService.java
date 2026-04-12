@@ -3,6 +3,7 @@ package com.bizcord.backend.service;
 import com.bizcord.backend.dto.ConversationResponse;
 import com.bizcord.backend.entity.Conversation;
 import com.bizcord.backend.entity.User;
+import com.bizcord.backend.mapper.ConversationMapper;
 import com.bizcord.backend.repository.ConversationRepository;
 import com.bizcord.backend.repository.UserRepository;
 import com.bizcord.backend.utils.ErrorMessages;
@@ -107,24 +108,6 @@ public class ConversationService {
     }
 
     private ConversationResponse toResponse(Conversation c) {
-        return ConversationResponse.builder()
-                .id(c.getId())
-                .user1(toUserItem(c.getUser1()))
-                .user2(toUserItem(c.getUser2()))
-                .createdAt(c.getCreatedAt())
-                .updatedAt(c.getUpdatedAt())
-                .build();
-    }
-
-    private ConversationResponse.UserItem toUserItem(User user) {
-        return ConversationResponse.UserItem.builder()
-                .id(user.getId())
-                .fullName(user.getFullName())
-                .username(user.getUsername2())
-                .email(user.getEmail())
-                .imageUrl(user.getImageUrl())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .build();
+        return ConversationMapper.INSTANCE.toResponse(c);
     }
 }
