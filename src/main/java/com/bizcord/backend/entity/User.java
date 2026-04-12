@@ -17,8 +17,8 @@ import java.util.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"servers", "members", "channels"})
-@ToString(exclude = {"servers", "members", "channels"})
+@EqualsAndHashCode(exclude = {"servers", "members", "channels", "directMessages", "conversationsInitiated", "conversationsReceived"})
+@ToString(exclude = {"servers", "members", "channels", "directMessages", "conversationsInitiated", "conversationsReceived"})
 @Entity(name = "bizcord_users")
 @EntityListeners(AuditingEntityListener.class)
 public class User implements UserDetails {
