@@ -219,6 +219,7 @@ public class MessageService {
         }
 
         boolean wasPinned = message.getPinnedAt() != null;
+        LocalDateTime originalUpdatedAt = message.getUpdatedAt();
         if (wasPinned) {
             message.setPinnedAt(null);
             message.setPinnedBy(null);
@@ -226,6 +227,8 @@ public class MessageService {
             message.setPinnedAt(LocalDateTime.now());
             message.setPinnedBy(currentUser);
         }
+        messageRepository.save(message);
+        message.setUpdatedAt(originalUpdatedAt);
         messageRepository.save(message);
 
         List<Reaction> reactions = reactionRepository.findAllByMessageId(messageId);
