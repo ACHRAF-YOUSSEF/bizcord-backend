@@ -2,8 +2,11 @@ package com.bizcord.backend.controller;
 
 import com.bizcord.backend.config.ratelimit.RateLimit;
 import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
+import com.bizcord.backend.dto.PasswordChangeRequest;
 import com.bizcord.backend.dto.UserProfileResponse;
+import com.bizcord.backend.dto.UserProfileUpdateRequest;
 import com.bizcord.backend.dto.UserStatusRequest;
+import com.bizcord.backend.service.UploadService;
 import com.bizcord.backend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,6 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final UploadService uploadService;
 
     @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
     @GetMapping("/me")
@@ -37,6 +42,36 @@ public class UserController {
     public ResponseEntity<Void> updateStatus(@Valid @RequestBody UserStatusRequest request,
                                               @AuthenticationPrincipal UserDetails userDetails) {
         userService.updateStatus(userDetails.getUsername(), request.getStatus());
+        return ResponseEntity.noContent().build();
+    }
+
+    @RateLimit(limit = 10, keyType = RateLimitKeyType.UID)
+    @PatchMapping("/me")
+    public ResponseEntity<UserProfileResponse> updateProfile(@Valid @RequestBody UserProfileUpdateRequest request,
+                                                              @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(userService.updateProfile(userDetails.getUsername(), request));
+    }
+
+    @RateLimit(limit = 5, keyType = RateLimitKeyType.UID)
+    @PatchMapping("/me/avatar")
+    public ResponseEntity<UserProfileResponse> updateAvatar(@RequestParam("file") MultipartFile file,
+                                                             @AuthenticationPrincipal UserDetails userDetails) {
+        var upload = uploadService.uploadImage(file);
+        return ResponseEntity.ok(userService.updateAvatar(userDetails.getUsername(), upload.getUrl()));
+    }
+
+    @RateLimit(limit = 5, keyType = RateLimitKeyType.UID)
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody PasswordChangeRequest request,
+                                                @AuthenticationPrincipal UserDetails userDetails) {
+        userService.changePassword(userDetails.getUsername(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @RateLimit(limit = 3, keyType = RateLimitKeyType.UID)
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
+        userService.deleteAccount(userDetails.getUsername());
         return ResponseEntity.noContent().build();
     }
 }
