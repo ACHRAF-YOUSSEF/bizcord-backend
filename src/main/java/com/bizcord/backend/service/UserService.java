@@ -146,6 +146,7 @@ public class UserService {
             messagingTemplate.convertAndSend(
                     "/topic/servers/" + member.getServer().getId() + "/presence", event);
         }
+        messagingTemplate.convertAndSend("/topic/users/" + userId + "/presence", event);
     }
 
     private UserProfileResponse toProfileResponse(Member member) {
