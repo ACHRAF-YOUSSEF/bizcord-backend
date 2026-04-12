@@ -1,5 +1,6 @@
 package com.bizcord.backend.dto;
 
+import com.bizcord.backend.entity.UserStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,6 +14,7 @@ public class UserProfileResponse {
     private String username;
     private String email;
     private String imageUrl;
+    private UserStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

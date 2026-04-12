@@ -2,6 +2,7 @@ package com.bizcord.backend.dto;
 
 import com.bizcord.backend.entity.ChannelType;
 import com.bizcord.backend.entity.MemberRole;
+import com.bizcord.backend.entity.UserStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -31,6 +32,7 @@ public class ServerResponse {
         private String email;
         private String fullName;
         private String imageUrl;
+        private UserStatus status;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
     }

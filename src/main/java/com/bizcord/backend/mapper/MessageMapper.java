@@ -19,5 +19,6 @@ public interface MessageMapper {
     MessageResponse.MemberItem toMemberItem(Member member);
 
     @Mapping(source = "username2", target = "username")
+    @Mapping(source = "status", target = "status")
     MessageResponse.UserItem toUserItem(User user);
 }
