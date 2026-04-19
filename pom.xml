@@ -28,6 +28,12 @@
     </scm>
     <properties>
         <java.version>25</java.version>
+        <!-- CVE overrides on Spring Boot 3.5.10 managed deps -->
+        <tomcat.version>10.1.54</tomcat.version> <!-- CVE-2026-24734/29145/25854/32990/34487/34483/34500 -->
+        <jackson-bom.version>2.21.1</jackson-bom.version> <!-- GHSA-72hv-8253-57qq -->
+        <assertj.version>3.27.7</assertj.version> <!-- CVE-2026-24400 -->
+        <spring-framework.version>6.2.17</spring-framework.version> <!-- CVE-2026-22737/22735 -->
+        <spring-security.version>6.5.9</spring-security.version> <!-- CVE-2026-22732 -->
     </properties>
     <dependencies>
         <dependency>
