@@ -1,14 +1,12 @@
 services:
   postgres:
-    image: postgres:17.9-alpine3.23
+    image: postgres:18-alpine3.23
     container_name: bizcord-postgres-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: bizcord
-    ports:
-      - "5432:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     expose:
@@ -21,7 +19,7 @@ services:
       start_period: 10s
 
   backend:
-    image: achrafyoussef/bizcord-backend:latest
+    image: achrafyoussef/bizcord-backend:1.0.0
     container_name: bizcord-backend
     restart: unless-stopped
     depends_on:
@@ -39,14 +37,14 @@ services:
       API_SECRET: ${APP_API_SECRET:-bizcord-api-secret}
       APP_JWT_SECRET_KEY: ${APP_JWT_SECRET_KEY:-bizcord-secret-key}
       APP_MEDIASOUP_API_SECRET: ${MEDIASOUP_API_SECRET:-bizcord-mediasoup-secret}
-      APP_MEDIASOUP_URL: ${MEDIASOUP_URL:-http://bizcord-mediasoup:3000}
+      APP_MEDIASOUP_URL: ${MEDIASOUP_URL:-http://192.168.0.224:3000}
     volumes:
       - ./uploads:/app/uploads
     expose:
       - "8080"
 
   mediasoup:
-    image: achrafyoussef/bizcord-mediasoup:latest
+    image: achrafyoussef/bizcord-mediasoup:1.0.0
     container_name: bizcord-mediasoup
     restart: unless-stopped
     environment:
@@ -56,14 +54,10 @@ services:
       RTC_MIN_PORT: ${MEDIASOUP_RTC_MIN_PORT:-52000}
       RTC_MAX_PORT: ${MEDIASOUP_RTC_MAX_PORT:-52999}
       API_SECRET: ${MEDIASOUP_API_SECRET:-bizcord-mediasoup-secret}
-    expose:
-      - "3000"
-    ports:
-      - "${MEDIASOUP_RTC_MIN_PORT:-52000}-${MEDIASOUP_RTC_MAX_PORT:-52999}:${MEDIASOUP_RTC_MIN_PORT:-52000}-${MEDIASOUP_RTC_MAX_PORT:-52999}/udp"
-      - "${MEDIASOUP_RTC_MIN_PORT:-52000}-${MEDIASOUP_RTC_MAX_PORT:-52999}:${MEDIASOUP_RTC_MIN_PORT:-52000}-${MEDIASOUP_RTC_MAX_PORT:-52999}/tcp"
+    network_mode: "host"
 
   frontend:
-    image: achrafyoussef/bizcord-frontend:latest
+    image: achrafyoussef/bizcord-frontend:1.0.0
     container_name: bizcord-frontend
     environment:
       BACKEND_URL: http://bizcord-backend:8080
