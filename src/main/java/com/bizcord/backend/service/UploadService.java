@@ -56,6 +56,7 @@ public class UploadService {
             "audio/aac",
             "application/json",
             "application/xml",
+            "text/plain",
             "text/csv",
             "text/xml"
     );
@@ -63,7 +64,7 @@ public class UploadService {
     private final StorageProperties storageProperties;
     private final ObjectStorageService objectStorageService;
 
-    public record PublicFileResource(Resource resource, String contentType, long contentLength) {
+    public record PublicFileResource(Resource resource, String contentType, long contentLength, String fileName) {
     }
 
     public FileUploadResponse uploadImage(MultipartFile file) {
@@ -82,7 +83,7 @@ public class UploadService {
         validateFileProvided(file);
         String contentType = normalizeContentType(file);
         if (!contentType.startsWith(IMAGE_CONTENT_TYPE_PREFIX) && !contentType.startsWith("video/")
-                && !contentType.startsWith("audio/") && !contentType.startsWith("text/")
+                && !contentType.startsWith("audio/")
                 && !MESSAGE_ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new ResponseStatusException(
                     HttpStatus.UNSUPPORTED_MEDIA_TYPE,
@@ -107,7 +108,7 @@ public class UploadService {
         if (imageOnly && !contentType.toLowerCase().startsWith(IMAGE_CONTENT_TYPE_PREFIX)) {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Requested file is not an image");
         }
-        return new PublicFileResource(storedObject.resource(), contentType, storedObject.contentLength());
+        return new PublicFileResource(storedObject.resource(), contentType, storedObject.contentLength(), sanitizedFilename);
     }
 
     private FileUploadResponse storeHashedFile(MultipartFile file, String contentType, String subdirectory) {

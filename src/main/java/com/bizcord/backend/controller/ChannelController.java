@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,8 +34,9 @@ public class ChannelController {
     public ResponseEntity<ServerResponse> createChannel(@RequestParam String serverId,
                                                         @Valid @RequestBody ChannelCreateRequest request,
                                                         @AuthenticationPrincipal UserDetails userDetails) {
+        ServerResponse response = channelService.createChannel(serverId, request, userDetails.getUsername());
         return ResponseEntity.status(CREATED)
-                .body(channelService.createChannel(serverId, request, userDetails.getUsername()));
+                .body(sanitizeResponse(response));
     }
 
     @RateLimit(limit = 10, keyType = RateLimitKeyType.UID)
@@ -43,7 +45,8 @@ public class ChannelController {
                                                         @RequestParam String serverId,
                                                         @Valid @RequestBody ChannelUpdateRequest request,
                                                         @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(channelService.updateChannel(channelId, serverId, request, userDetails.getUsername()));
+        ServerResponse response = channelService.updateChannel(channelId, serverId, request, userDetails.getUsername());
+        return ResponseEntity.ok(sanitizeResponse(response));
     }
 
     @RateLimit(limit = 10, keyType = RateLimitKeyType.UID)
@@ -51,6 +54,31 @@ public class ChannelController {
     public ResponseEntity<ServerResponse> deleteChannel(@PathVariable String channelId,
                                                         @RequestParam String serverId,
                                                         @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(channelService.deleteChannel(channelId, serverId, userDetails.getUsername()));
+        ServerResponse response = channelService.deleteChannel(channelId, serverId, userDetails.getUsername());
+        return ResponseEntity.ok(sanitizeResponse(response));
+    }
+
+    private ServerResponse sanitizeResponse(ServerResponse response) {
+        response.setName(escape(response.getName()));
+        if (response.getMembers() != null) {
+            response.getMembers().forEach(member -> {
+                member.setName(escape(member.getName()));
+                if (member.getUser() != null) {
+                    member.getUser().setUsername(escape(member.getUser().getUsername()));
+                    member.getUser().setFullName(escape(member.getUser().getFullName()));
+                }
+            });
+        }
+        if (response.getChannels() != null) {
+            response.getChannels().forEach(channel -> channel.setName(escape(channel.getName())));
+        }
+        if (response.getCategories() != null) {
+            response.getCategories().forEach(category -> category.setName(escape(category.getName())));
+        }
+        return response;
+    }
+
+    private String escape(String value) {
+        return value == null ? null : HtmlUtils.htmlEscape(value);
     }
 }

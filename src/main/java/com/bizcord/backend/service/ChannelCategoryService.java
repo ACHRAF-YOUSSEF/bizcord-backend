@@ -37,7 +37,7 @@ public class ChannelCategoryService {
         int nextPosition = (int) categoryRepository.countByServerId(serverId);
 
         ChannelCategory category = ChannelCategory.builder()
-                .name(request.getName())
+                .name(normalizeName(request.getName()))
                 .position(nextPosition)
                 .server(server)
                 .build();
@@ -61,7 +61,7 @@ public class ChannelCategoryService {
         }
 
         if (request.getName() != null) {
-            category.setName(request.getName());
+            category.setName(normalizeName(request.getName()));
         }
 
         categoryRepository.save(category);
@@ -181,5 +181,13 @@ public class ChannelCategoryService {
         if (member.getRole() == MemberRole.GUEST) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CATEGORY_CREATE_FORBIDDEN);
         }
+    }
+
+    private String normalizeName(String value) {
+        String normalized = value == null ? null : value.strip();
+        if (normalized == null || normalized.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name is required");
+        }
+        return normalized;
     }
 }

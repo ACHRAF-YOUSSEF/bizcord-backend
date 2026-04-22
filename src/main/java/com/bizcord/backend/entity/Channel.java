@@ -16,7 +16,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(exclude = {"server", "user", "category"})
-@ToString(exclude = {"server", "user", "category"})
+@ToString(exclude = {"server", "user", "category", "messages"})
 @Entity(name = "bizcord_channels")
 @EntityListeners(AuditingEntityListener.class)
 public class Channel {
