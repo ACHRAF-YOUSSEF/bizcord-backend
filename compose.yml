@@ -31,20 +31,13 @@ services:
     expose:
       - "9000"
       - "9001"
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1 || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
 
   minio-init:
     image: minio/mc:latest
     container_name: bizcord-minio-init
     restart: "no"
     depends_on:
-      minio:
-        condition: service_healthy
+      - minio
     entrypoint:
       - /bin/sh
       - -c
@@ -57,10 +50,6 @@ services:
     container_name: bizcord-backend
     restart: unless-stopped
     depends_on:
-      minio:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
       mediasoup:
         condition: service_started
       postgres:
