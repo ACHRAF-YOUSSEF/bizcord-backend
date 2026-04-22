@@ -1,10 +1,10 @@
 package com.bizcord.backend.service;
 
-import com.bizcord.backend.config.UploadProperties;
+import com.bizcord.backend.config.StorageProperties;
 import com.bizcord.backend.dto.FileUploadResponse;
+import com.bizcord.backend.service.storage.ObjectStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
@@ -12,12 +12,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
@@ -61,9 +57,10 @@ public class UploadService {
             "text/xml"
     );
 
-    private final UploadProperties uploadProperties;
+    private final StorageProperties storageProperties;
+    private final ObjectStorageService objectStorageService;
 
-    public record PublicFileResource(Resource resource, String contentType) {
+    public record PublicFileResource(Resource resource, String contentType, long contentLength) {
     }
 
     public FileUploadResponse uploadImage(MultipartFile file) {
@@ -102,25 +99,12 @@ public class UploadService {
 
     private PublicFileResource loadPublicFile(String fileName, String subdirectory, boolean imageOnly) {
         String sanitizedFilename = sanitizeRequestedFilename(fileName);
-        try {
-            Path uploadRoot = Path.of(uploadProperties.getBaseDirectory()).toAbsolutePath().normalize();
-            Path filePath = safeResolve(uploadRoot.resolve(subdirectory).normalize(), sanitizedFilename);
-
-            if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found");
-            }
-            String contentType = detectContentType(filePath);
-            if (imageOnly && !contentType.toLowerCase().startsWith(IMAGE_CONTENT_TYPE_PREFIX)) {
-                throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Requested file is not an image");
-            }
-            Resource resource = new UrlResource(filePath.toUri());
-            if (!resource.exists() || !resource.isReadable()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found");
-            }
-            return new PublicFileResource(resource, contentType);
-        } catch (IOException _) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to load file");
+        ObjectStorageService.StoredObjectResource storedObject = objectStorageService.getObject(subdirectory + "/" + sanitizedFilename);
+        String contentType = storedObject.contentType();
+        if (imageOnly && !contentType.toLowerCase().startsWith(IMAGE_CONTENT_TYPE_PREFIX)) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Requested file is not an image");
         }
+        return new PublicFileResource(storedObject.resource(), contentType, storedObject.contentLength());
     }
 
     private FileUploadResponse storeHashedFile(MultipartFile file, String contentType, String subdirectory) {
@@ -131,49 +115,22 @@ public class UploadService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store uploaded file");
         }
 
-        try {
-            Path uploadRoot = Path.of(uploadProperties.getBaseDirectory()).toAbsolutePath().normalize();
-            Path uploadDirectory = uploadRoot.resolve(subdirectory).normalize();
-            Files.createDirectories(uploadDirectory);
-            Path safeDestination = safeResolve(uploadDirectory, storedFilename);
-            if (!Files.exists(safeDestination)) {
-                writeToDestination(file, uploadDirectory, safeDestination);
+        String objectKey = subdirectory + "/" + storedFilename;
+        if (!objectStorageService.objectExists(objectKey)) {
+            try (InputStream inputStream = file.getInputStream()) {
+                objectStorageService.putObject(objectKey, contentType, file.getSize(), inputStream);
+            } catch (IOException _) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store uploaded file");
             }
-        } catch (IOException _) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store uploaded file");
         }
 
-        String basePath = normalizePublicBasePath(uploadProperties.getPublicBasePath());
-        return FileUploadResponse.builder()
-                .originalFilename(originalFilename)
-                .contentType(contentType)
-                .size(file.getSize())
-                .url(basePath + "/" + subdirectory + "/" + storedFilename)
-                .build();
-    }
-
-    private Path safeResolve(Path directory, String filename) throws IOException {
-        Path resolved = directory.resolve(filename).normalize();
-        String canonicalDir = directory.toFile().getCanonicalPath();
-        String canonicalResolved = resolved.toFile().getCanonicalPath();
-        if (!canonicalResolved.startsWith(canonicalDir + File.separator)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path");
-        }
-        return resolved;
-    }
-
-    private void writeToDestination(MultipartFile file, Path uploadDirectory, Path safeDestination) throws IOException {
-        Path tempFile = Files.createTempFile(uploadDirectory, "upload-", ".tmp");
-        try {
-            file.transferTo(tempFile);
-            Files.move(tempFile, safeDestination, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            Files.deleteIfExists(tempFile);
-            throw e;
-        } catch (IllegalStateException _) {
-            Files.deleteIfExists(tempFile);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store uploaded file");
-        }
+        String basePath = normalizePublicBasePath(storageProperties.getPublicBasePath());
+        return new FileUploadResponse(
+                originalFilename,
+                contentType,
+                file.getSize(),
+                basePath + "/" + subdirectory + "/" + storedFilename
+        );
     }
 
     private void validateFileProvided(MultipartFile file) {
@@ -285,15 +242,6 @@ public class UploadService {
         }
 
         return cleaned;
-    }
-
-    private String detectContentType(Path filePath) {
-        try {
-            String contentType = Files.probeContentType(filePath);
-            return contentType == null ? "application/octet-stream" : contentType;
-        } catch (IOException _) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to determine file type");
-        }
     }
 
     private String normalizePublicBasePath(String value) {

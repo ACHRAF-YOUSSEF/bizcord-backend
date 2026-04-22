@@ -25,6 +25,7 @@ public class ChannelCategoryService {
     private final MemberRepository memberRepository;
     private final ServerRepository serverRepository;
     private final UserRepository userRepository;
+    private final ServerMapper serverMapper;
 
     @Transactional
     public ServerResponse createCategory(String serverId, CategoryCreateRequest request, String email) {
@@ -161,7 +162,7 @@ public class ChannelCategoryService {
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
         List<ChannelCategory> categories = categoryRepository.findAllByServerIdWithServer(serverId);
-        return toResponse(server, members, channels, categories);
+        return serverMapper.toResponse(server, members, channels, categories);
     }
 
     private User getUser(String email) {
@@ -180,9 +181,5 @@ public class ChannelCategoryService {
         if (member.getRole() == MemberRole.GUEST) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CATEGORY_CREATE_FORBIDDEN);
         }
-    }
-
-    static ServerResponse toResponse(Server server, List<Member> members, List<Channel> channels, List<ChannelCategory> categories) {
-        return ServerMapper.INSTANCE.toResponse(server, members, channels, categories);
     }
 }

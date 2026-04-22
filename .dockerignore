@@ -1,6 +1,7 @@
 target/
 postgres_data/
 uploads/
+minio_data/
 *.iml
 .idea/
 .git/

@@ -4,6 +4,7 @@ import com.bizcord.backend.dto.ChannelCreateRequest;
 import com.bizcord.backend.dto.ChannelUpdateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.entity.*;
+import com.bizcord.backend.mapper.ServerMapper;
 import com.bizcord.backend.repository.ChannelCategoryRepository;
 import com.bizcord.backend.repository.ChannelRepository;
 import com.bizcord.backend.repository.MemberRepository;
@@ -28,6 +29,7 @@ public class ChannelService {
     private final MemberRepository memberRepository;
     private final ServerRepository serverRepository;
     private final UserRepository userRepository;
+    private final ServerMapper serverMapper;
 
     @Transactional
     public ServerResponse updateChannel(String channelId, String serverId, ChannelUpdateRequest request, String email) {
@@ -139,7 +141,6 @@ public class ChannelService {
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
         List<ChannelCategory> categories = categoryRepository.findAllByServerIdWithServer(serverId);
-        return ChannelCategoryService.toResponse(server, members, channels, categories);
+        return serverMapper.toResponse(server, members, channels, categories);
     }
 }
-

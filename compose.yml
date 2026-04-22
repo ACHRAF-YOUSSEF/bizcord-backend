@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: bizcord
+    ports:
+      - "5432:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     expose:
@@ -18,11 +20,49 @@ services:
       retries: 5
       start_period: 10s
 
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: bizcord-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${APP_STORAGE_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${APP_STORAGE_MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - ./minio_data:/data
+    expose:
+      - "9000"
+      - "9001"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: bizcord-minio-init
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 ${APP_STORAGE_MINIO_ACCESS_KEY:-minioadmin} ${APP_STORAGE_MINIO_SECRET_KEY:-minioadmin}
+        mc mb --ignore-existing local/${APP_STORAGE_MINIO_BUCKET:-bizcord}
+
   backend:
     image: achrafyoussef/bizcord-backend:1.0.0
     container_name: bizcord-backend
     restart: unless-stopped
     depends_on:
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       mediasoup:
         condition: service_started
       postgres:
@@ -38,8 +78,12 @@ services:
       APP_JWT_SECRET_KEY: ${APP_JWT_SECRET_KEY:-bizcord-secret-key}
       APP_MEDIASOUP_API_SECRET: ${MEDIASOUP_API_SECRET:-bizcord-mediasoup-secret}
       APP_MEDIASOUP_URL: ${MEDIASOUP_URL:-http://192.168.0.224:3000}
-    volumes:
-      - ./uploads:/app/uploads
+      APP_STORAGE_MINIO_ENDPOINT: ${APP_STORAGE_MINIO_ENDPOINT:-http://minio:9000}
+      APP_STORAGE_MINIO_ACCESS_KEY: ${APP_STORAGE_MINIO_ACCESS_KEY:-minioadmin}
+      APP_STORAGE_MINIO_SECRET_KEY: ${APP_STORAGE_MINIO_SECRET_KEY:-minioadmin}
+      APP_STORAGE_MINIO_BUCKET: ${APP_STORAGE_MINIO_BUCKET:-bizcord}
+      APP_STORAGE_MINIO_SECURE: ${APP_STORAGE_MINIO_SECURE:-false}
+      APP_STORAGE_PUBLIC_BASE_PATH: ${APP_STORAGE_PUBLIC_BASE_PATH:-/uploads}
     expose:
       - "8080"
 

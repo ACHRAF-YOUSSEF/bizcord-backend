@@ -25,6 +25,7 @@ public class EventService {
     private final ServerRepository serverRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
+    private final EventMapper eventMapper;
 
     @Transactional(readOnly = true)
     public List<EventResponse> getEvents(String serverId, String email) {
@@ -239,6 +240,6 @@ public class EventService {
     }
 
     private EventResponse toResponse(Event event, List<EventAttendee> attendees) {
-        return EventMapper.INSTANCE.toResponse(event, attendees);
+        return eventMapper.toResponse(event, attendees);
     }
 }

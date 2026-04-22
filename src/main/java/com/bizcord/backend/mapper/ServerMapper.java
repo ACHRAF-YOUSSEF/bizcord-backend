@@ -5,14 +5,11 @@ import com.bizcord.backend.entity.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
-import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper
+@Mapper(config = MapStructConfig.class)
 public interface ServerMapper {
-    ServerMapper INSTANCE = Mappers.getMapper(ServerMapper.class);
-
     @Mapping(source = "user.id", target = "userId")
     @Mapping(target = "members", ignore = true)
     @Mapping(target = "channels", ignore = true)

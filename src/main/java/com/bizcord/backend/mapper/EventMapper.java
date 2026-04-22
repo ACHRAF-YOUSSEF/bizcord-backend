@@ -6,14 +6,11 @@ import com.bizcord.backend.entity.EventAttendee;
 import com.bizcord.backend.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper
+@Mapper(config = MapStructConfig.class)
 public interface EventMapper {
-    EventMapper INSTANCE = Mappers.getMapper(EventMapper.class);
-
     @Mapping(source = "server.id", target = "serverId")
     @Mapping(source = "creator", target = "creator")
     @Mapping(target = "attendees", ignore = true)

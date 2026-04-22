@@ -44,6 +44,7 @@ public class UploadController {
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(image.contentType()))
+                .contentLength(image.contentLength())
                 .body(image.resource());
     }
 
@@ -56,6 +57,7 @@ public class UploadController {
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(file.contentType()))
+                .contentLength(file.contentLength())
                 .body(file.resource());
     }
 }

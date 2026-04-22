@@ -44,6 +44,7 @@ public class MessageService {
     private final ReactionRepository reactionRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
+    private final MessageMapper messageMapper;
 
     @Transactional(readOnly = true)
     public List<MessageResponse> getMessages(String channelId, String cursor, String email) {
@@ -177,26 +178,7 @@ public class MessageService {
         String channelFilter = (channelId != null && !channelId.isBlank()) ? channelId : null;
         List<Message> messages = messageRepository.searchByContent(serverId, channelFilter, query, PageRequest.of(page, 20));
 
-        return messages.stream().map(m -> MessageSearchResponse.builder()
-                .id(m.getId())
-                .content(m.getContent())
-                .attachments(m.getAttachments())
-                .channelId(m.getChannel().getId())
-                .channelName(m.getChannel().getName())
-                .createdAt(m.getCreatedAt())
-                .member(MessageSearchResponse.MemberItem.builder()
-                        .id(m.getMember().getId())
-                        .name(m.getMember().getName())
-                        .role(m.getMember().getRole())
-                        .user(MessageSearchResponse.UserItem.builder()
-                                .id(m.getMember().getUser().getId())
-                                .fullName(m.getMember().getUser().getFullName())
-                                .username(m.getMember().getUser().getUsername2())
-                                .imageUrl(m.getMember().getUser().getImageUrl())
-                                .status(m.getMember().getUser().getStatus())
-                                .build())
-                        .build())
-                .build()).toList();
+        return messages.stream().map(messageMapper::toSearchResponse).toList();
     }
 
     // --- Pin/Unpin ---
@@ -279,32 +261,6 @@ public class MessageService {
     }
 
     private MessageResponse toResponse(Message msg, List<Reaction> reactions, String currentUserId) {
-        Map<String, List<Reaction>> grouped = reactions.stream()
-                .collect(Collectors.groupingBy(Reaction::getEmoji));
-
-        List<MessageResponse.ReactionGroup> reactionGroups = grouped.entrySet().stream()
-                .map(e -> MessageResponse.ReactionGroup.builder()
-                        .emoji(e.getKey())
-                        .count(e.getValue().size())
-                        .userIds(e.getValue().stream().map(r -> r.getUser().getId()).toList())
-                        .me(e.getValue().stream().anyMatch(r -> r.getUser().getId().equals(currentUserId)))
-                        .build())
-                .toList();
-
-        MessageResponse response = MessageMapper.INSTANCE.toResponse(msg);
-        response.setReactions(reactionGroups);
-        if (msg.getParentMessage() != null) {
-            Message parent = msg.getParentMessage();
-            String senderName = parent.getMember() != null
-                    ? parent.getMember().getUser().getUsername2()
-                    : "Unknown";
-            response.setParentMessage(MessageResponse.ParentMessagePreview.builder()
-                    .id(parent.getId())
-                    .content(parent.isDeleted() ? null : parent.getContent())
-                    .senderName(senderName)
-                    .build());
-        }
-        return response;
+        return messageMapper.toResponse(msg, reactions, currentUserId);
     }
 }
-

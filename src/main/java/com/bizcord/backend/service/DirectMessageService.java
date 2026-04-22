@@ -40,6 +40,7 @@ public class DirectMessageService {
     private final ReactionRepository reactionRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
+    private final DirectMessageMapper directMessageMapper;
 
     @Transactional(readOnly = true)
     public List<DirectMessageResponse> getMessages(String conversationId, String cursor, String email) {
@@ -170,19 +171,7 @@ public class DirectMessageService {
         List<DirectMessage> messages = directMessageRepository.searchByContent(
                 conversationId, query, PageRequest.of(page, 20));
 
-        return messages.stream().map(dm -> DmSearchResponse.builder()
-                .id(dm.getId())
-                .content(dm.getContent())
-                .attachments(dm.getAttachments())
-                .conversationId(conversationId)
-                .createdAt(dm.getCreatedAt())
-                .user(DmSearchResponse.UserItem.builder()
-                        .id(dm.getUser().getId())
-                        .fullName(dm.getUser().getFullName())
-                        .username(dm.getUser().getUsername2())
-                        .imageUrl(dm.getUser().getImageUrl())
-                        .build())
-                .build()).toList();
+        return messages.stream().map(directMessageMapper::toSearchResponse).toList();
     }
 
     private Conversation getConversationWithUsers(String conversationId) {
@@ -255,32 +244,6 @@ public class DirectMessageService {
     }
 
     private DirectMessageResponse toResponse(DirectMessage dm, List<Reaction> reactions, String currentUserId) {
-        Map<String, List<Reaction>> grouped = reactions.stream()
-                .collect(Collectors.groupingBy(Reaction::getEmoji));
-
-        List<DirectMessageResponse.ReactionGroup> reactionGroups = grouped.entrySet().stream()
-                .map(e -> DirectMessageResponse.ReactionGroup.builder()
-                        .emoji(e.getKey())
-                        .count(e.getValue().size())
-                        .userIds(e.getValue().stream().map(r -> r.getUser().getId()).toList())
-                        .me(e.getValue().stream().anyMatch(r -> r.getUser().getId().equals(currentUserId)))
-                        .build())
-                .toList();
-
-        DirectMessageResponse response = DirectMessageMapper.INSTANCE.toResponse(dm);
-        response.setReactions(reactionGroups);
-        if (dm.getParentMessage() != null) {
-            DirectMessage parent = dm.getParentMessage();
-            String senderName = parent.getUser() != null
-                    ? parent.getUser().getUsername2()
-                    : "Unknown";
-            response.setParentMessage(DirectMessageResponse.ParentMessagePreview.builder()
-                    .id(parent.getId())
-                    .content(parent.isDeleted() ? null : parent.getContent())
-                    .senderName(senderName)
-                    .build());
-        }
-        return response;
+        return directMessageMapper.toResponse(dm, reactions, currentUserId);
     }
 }
-

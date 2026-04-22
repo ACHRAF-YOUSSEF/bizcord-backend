@@ -41,10 +41,10 @@ public class AuthService {
     @Transactional
     public TokenPair register(RegisterRequest request) {
         var user = User.builder()
-                .username(request.getUsername())
-                .fullName(request.getFullName())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
+                .username(request.username())
+                .fullName(request.fullName())
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
                 .build();
         repository.save(user);
         return buildTokenPair(user);
@@ -53,9 +53,9 @@ public class AuthService {
     @Transactional
     public TokenPair authenticate(AuthRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.email(), request.password())
         );
-        var user = repository.findByEmail(request.getEmail()).orElseThrow();
+        var user = repository.findByEmail(request.email()).orElseThrow();
         return buildTokenPair(user);
     }
 

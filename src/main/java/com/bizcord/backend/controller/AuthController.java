@@ -91,9 +91,6 @@ public class AuthController {
     }
 
     private static AuthResponse toResponse(TokenPair pair) {
-        return AuthResponse.builder()
-                .token(pair.accessToken())
-                .expiresIn(pair.expiresIn())
-                .build();
+        return new AuthResponse(pair.accessToken(), pair.expiresIn());
     }
 }

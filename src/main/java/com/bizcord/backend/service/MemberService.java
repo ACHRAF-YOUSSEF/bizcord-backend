@@ -28,6 +28,7 @@ public class MemberService {
     private final ChannelRepository channelRepository;
     private final ChannelCategoryRepository categoryRepository;
     private final BannedUserRepository bannedUserRepository;
+    private final ServerMapper serverMapper;
 
     @Transactional
     public ServerResponse updateMemberRole(String memberId, String serverId, MemberRoleUpdateRequest request, String email) {
@@ -187,7 +188,7 @@ public class MemberService {
         }
 
         return bannedUserRepository.findAllByServerIdWithUser(serverId).stream()
-                .map(ServerMapper.INSTANCE::toBannedUserItem)
+                .map(serverMapper::toBannedUserItem)
                 .toList();
     }
 
@@ -199,6 +200,6 @@ public class MemberService {
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
         List<ChannelCategory> categories = categoryRepository.findAllByServerIdWithServer(serverId);
 
-        return ChannelCategoryService.toResponse(server, members, channels, categories);
+        return serverMapper.toResponse(server, members, channels, categories);
     }
 }
