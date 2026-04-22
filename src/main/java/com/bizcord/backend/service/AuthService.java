@@ -32,7 +32,7 @@ public class AuthService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserRepository repository;
-    public final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final AuthenticationManager authenticationManager;
