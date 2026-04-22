@@ -41,7 +41,7 @@ public class UploadController {
     }
 
     @RateLimit(limit = 120, keyType = RateLimitKeyType.IP)
-    @GetMapping("/images/{file_name:[0-9a-f]{64}(\\.[A-Za-z0-9]{1,10})?}")
+    @GetMapping("/images/{file_name:[0-9a-f]{64}(?:\\.[A-Za-z0-9]{1,10})?}")
     public ResponseEntity<Resource> getImage(
             @PathVariable("file_name") String fileName
     ) {
@@ -54,7 +54,7 @@ public class UploadController {
     }
 
     @RateLimit(limit = 120, keyType = RateLimitKeyType.IP)
-    @GetMapping("/messages/{file_name:[0-9a-f]{64}(\\.[A-Za-z0-9]{1,10})?}")
+    @GetMapping("/messages/{file_name:[0-9a-f]{64}(?:\\.[A-Za-z0-9]{1,10})?}")
     public ResponseEntity<Resource> getMessageFile(
             @PathVariable("file_name") String fileName
     ) {
