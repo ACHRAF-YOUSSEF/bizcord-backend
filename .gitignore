@@ -37,6 +37,7 @@ build/
 
 # Environment & secrets
 .env
+.env.prod
 *.pem
 *.key
 *.p12
@@ -50,3 +51,4 @@ coverage
 # OS artifacts
 .DS_Store
 Thumbs.db
+compose-dev.yml
