@@ -36,7 +36,7 @@ app:
     allow-credentials: true
     max-age: 3600
   storage:
-    public-base-path: ${APP_STORAGE_PUBLIC_BASE_PATH:/uploads}
+    public-base-path: ${APP_STORAGE_PUBLIC_BASE_PATH:/api/uploads}
     minio:
       endpoint: ${APP_STORAGE_MINIO_ENDPOINT}
       access-key: ${APP_STORAGE_MINIO_ACCESS_KEY}

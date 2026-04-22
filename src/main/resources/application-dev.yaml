@@ -37,7 +37,7 @@ app:
     allow-credentials: true
     max-age: 3600
   storage:
-    public-base-path: /uploads
+    public-base-path: /api/uploads
     minio:
       endpoint: ${APP_STORAGE_MINIO_ENDPOINT:http://localhost:9000}
       access-key: ${APP_STORAGE_MINIO_ACCESS_KEY:minioadmin}
@@ -54,4 +54,4 @@ app:
     access-token-expiry-ms: 900000
   mediasoup:
     url: http://localhost:3000
-    api-secret: ${API_SECRET:bizcord-mediasoup-secret}
+    api-secret: ${MEDIASOUP_API_SECRET:bizcord-mediasoup-secret}

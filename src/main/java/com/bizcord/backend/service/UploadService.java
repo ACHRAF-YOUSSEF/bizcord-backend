@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -141,7 +144,16 @@ public class UploadService {
 
     private String normalizeContentType(MultipartFile file) {
         String ct = file.getContentType();
-        return ct == null ? "" : ct.toLowerCase();
+        if (!StringUtils.hasText(ct)) {
+            return "";
+        }
+
+        try {
+            MediaType parsed = MediaType.parseMediaType(ct);
+            return (parsed.getType() + "/" + parsed.getSubtype()).toLowerCase(Locale.ROOT);
+        } catch (InvalidMediaTypeException _) {
+            return "";
+        }
     }
 
     private String computeSha256Hex(MultipartFile file) {
@@ -228,8 +240,25 @@ public class UploadService {
         if (!StringUtils.hasText(filename)) {
             return "file";
         }
-        String cleaned = StringUtils.cleanPath(filename);
-        return StringUtils.hasText(cleaned) ? cleaned : "file";
+
+        String basename = StringUtils.cleanPath(filename);
+        int slash = Math.max(basename.lastIndexOf('/'), basename.lastIndexOf('\\'));
+        if (slash >= 0 && slash + 1 < basename.length()) {
+            basename = basename.substring(slash + 1);
+        }
+
+        String safe = basename
+                .replaceAll("[\\r\\n\\t\\x00-\\x1F\\x7F]", "")
+                .replaceAll("[^A-Za-z0-9._ -]", "_")
+                .trim();
+
+        if (!StringUtils.hasText(safe)) {
+            return "file";
+        }
+        if (safe.length() > 120) {
+            return safe.substring(0, 120);
+        }
+        return safe;
     }
 
     private String sanitizeRequestedFilename(String filename) {
@@ -246,7 +275,7 @@ public class UploadService {
 
     private String normalizePublicBasePath(String value) {
         if (!StringUtils.hasText(value)) {
-            return "/uploads";
+            return "/api/uploads";
         }
 
         String normalized = value.startsWith("/") ? value : "/" + value;

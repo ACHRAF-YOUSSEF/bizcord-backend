@@ -148,7 +148,7 @@ Set these when running with `SPRING_PROFILES_ACTIVE=prod`.
 | `APP_COOKIE_SECURE` | No | `true` | `false` when serving over plain HTTP |
 | `APP_MEDIASOUP_API_SECRET` | No | `bizcord-mediasoup-secret` | Shared secret with the mediasoup service |
 | `APP_MEDIASOUP_URL` | No | `http://mediasoup:3000` | Internal URL of the mediasoup container |
-| `APP_STORAGE_PUBLIC_BASE_PATH` | No | `/uploads` | Relative URL prefix stored in API responses |
+| `APP_STORAGE_PUBLIC_BASE_PATH` | No | `/api/uploads` | Relative URL prefix stored in API responses |
 | `APP_STORAGE_MINIO_ENDPOINT` | Yes | `http://minio:9000` | MinIO/S3-compatible endpoint |
 | `APP_STORAGE_MINIO_ACCESS_KEY` | Yes | `minioadmin` | MinIO access key |
 | `APP_STORAGE_MINIO_SECRET_KEY` | Yes | `minioadmin` | MinIO secret key |

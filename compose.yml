@@ -30,6 +30,9 @@ services:
       MINIO_ROOT_PASSWORD: ${APP_STORAGE_MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - ./minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     expose:
       - "9000"
       - "9001"
@@ -83,7 +86,7 @@ services:
       APP_STORAGE_MINIO_SECRET_KEY: ${APP_STORAGE_MINIO_SECRET_KEY:-minioadmin}
       APP_STORAGE_MINIO_BUCKET: ${APP_STORAGE_MINIO_BUCKET:-bizcord}
       APP_STORAGE_MINIO_SECURE: ${APP_STORAGE_MINIO_SECURE:-false}
-      APP_STORAGE_PUBLIC_BASE_PATH: ${APP_STORAGE_PUBLIC_BASE_PATH:-/uploads}
+      APP_STORAGE_PUBLIC_BASE_PATH: ${APP_STORAGE_PUBLIC_BASE_PATH:-/api/uploads}
     expose:
       - "8080"
 

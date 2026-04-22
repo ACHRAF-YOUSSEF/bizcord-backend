@@ -34,7 +34,6 @@ build/
 /uploads
 /postgres_data
 /minio_data
-/BACKEND_UPGRADE_PROGRESS.md
 
 # Environment & secrets
 .env
