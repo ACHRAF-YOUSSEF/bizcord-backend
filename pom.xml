@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.bizcord</groupId>
     <artifactId>Backend</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <name>Backend</name>
     <description>Backend</description>
     <url/>
@@ -33,6 +33,7 @@
         <mapstruct.version>1.6.3</mapstruct.version>
         <minio.version>9.0.0</minio.version>
         <okhttp.version>5.2.1</okhttp.version>
+        <spring-security.version>7.0.5</spring-security.version>
         <spring-framework.version>6.2.18</spring-framework.version>
         <tomcat.version>10.1.54</tomcat.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
