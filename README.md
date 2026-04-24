@@ -206,12 +206,6 @@ See [DOCKER_HUB.md](./DOCKER_HUB.md) for the full Docker Hub description and all
 
 ---
 
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=ACHRAF-YOUSSEF/bizcord-backend&type=Date)](https://star-history.com/#ACHRAF-YOUSSEF/bizcord-backend&Date)
-
----
-
 ## 👨‍💻 Author
 
 **Achraf Youssef**
