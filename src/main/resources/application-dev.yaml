@@ -36,9 +36,14 @@ app:
       - Authorization
     allow-credentials: true
     max-age: 3600
-  upload:
-    base-directory: uploads
-    public-base-path: /uploads
+  storage:
+    public-base-path: /api/uploads
+    minio:
+      endpoint: ${APP_STORAGE_MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${APP_STORAGE_MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${APP_STORAGE_MINIO_SECRET_KEY:minioadmin}
+      bucket: ${APP_STORAGE_MINIO_BUCKET:bizcord}
+      secure: ${APP_STORAGE_MINIO_SECURE:false}
   cookie:
     secure: false
     same-site: Strict
@@ -49,4 +54,4 @@ app:
     access-token-expiry-ms: 900000
   mediasoup:
     url: http://localhost:3000
-    api-secret: ${API_SECRET:bizcord-mediasoup-secret}
+    api-secret: ${MEDIASOUP_API_SECRET:bizcord-mediasoup-secret}

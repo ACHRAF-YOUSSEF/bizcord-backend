@@ -27,13 +27,13 @@ public class TypingWebSocketController {
             Principal principal) {
         User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-        TypingEvent event = TypingEvent.builder()
-                .type(request.getType())
-                .userId(user.getId())
-                .username(user.getUsername2())
-                .fullName(user.getFullName())
-                .imageUrl(user.getImageUrl())
-                .build();
+        TypingEvent event = new TypingEvent(
+                request.type(),
+                user.getId(),
+                user.getUsername2(),
+                user.getFullName(),
+                user.getImageUrl()
+        );
         messagingTemplate.convertAndSend("/topic/channels/" + channelId + "/typing", event);
     }
 
@@ -44,13 +44,13 @@ public class TypingWebSocketController {
             Principal principal) {
         User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-        TypingEvent event = TypingEvent.builder()
-                .type(request.getType())
-                .userId(user.getId())
-                .username(user.getUsername2())
-                .fullName(user.getFullName())
-                .imageUrl(user.getImageUrl())
-                .build();
+        TypingEvent event = new TypingEvent(
+                request.type(),
+                user.getId(),
+                user.getUsername2(),
+                user.getFullName(),
+                user.getImageUrl()
+        );
         messagingTemplate.convertAndSend("/topic/conversations/" + conversationId + "/typing", event);
     }
 }

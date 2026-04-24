@@ -41,7 +41,7 @@ public class UserController {
     @PatchMapping("/me/status")
     public ResponseEntity<Void> updateStatus(@Valid @RequestBody UserStatusRequest request,
                                               @AuthenticationPrincipal UserDetails userDetails) {
-        userService.updateStatus(userDetails.getUsername(), request.getStatus());
+        userService.updateStatus(userDetails.getUsername(), request.status());
         return ResponseEntity.noContent().build();
     }
 
@@ -57,7 +57,7 @@ public class UserController {
     public ResponseEntity<UserProfileResponse> updateAvatar(@RequestParam("file") MultipartFile file,
                                                              @AuthenticationPrincipal UserDetails userDetails) {
         var upload = uploadService.uploadImage(file);
-        return ResponseEntity.ok(userService.updateAvatar(userDetails.getUsername(), upload.getUrl()));
+        return ResponseEntity.ok(userService.updateAvatar(userDetails.getUsername(), upload.url()));
     }
 
     @RateLimit(limit = 5, keyType = RateLimitKeyType.UID)
@@ -75,4 +75,3 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 }
-

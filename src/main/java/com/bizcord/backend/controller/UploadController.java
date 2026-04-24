@@ -6,10 +6,15 @@ import com.bizcord.backend.dto.FileUploadResponse;
 import com.bizcord.backend.service.UploadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.charset.StandardCharsets;
 
 import static org.springframework.http.HttpStatus.CREATED;
 
@@ -24,7 +29,7 @@ public class UploadController {
     public ResponseEntity<FileUploadResponse> uploadImage(@RequestParam("file") MultipartFile file) {
         return ResponseEntity
                 .status(CREATED)
-                .body(uploadService.uploadImage(file));
+                .body(sanitizeUploadResponse(uploadService.uploadImage(file)));
     }
 
     @RateLimit(limit = 15, keyType = RateLimitKeyType.UID)
@@ -32,11 +37,11 @@ public class UploadController {
     public ResponseEntity<FileUploadResponse> uploadMessageFile(@RequestParam("file") MultipartFile file) {
         return ResponseEntity
                 .status(CREATED)
-                .body(uploadService.uploadMessageFile(file));
+                .body(sanitizeUploadResponse(uploadService.uploadMessageFile(file)));
     }
 
     @RateLimit(limit = 120, keyType = RateLimitKeyType.IP)
-    @GetMapping("/images/{file_name:.+}")
+    @GetMapping("/images/{file_name:[0-9a-f]{64}(?:\\.[A-Za-z0-9]{1,10})?}")
     public ResponseEntity<Resource> getImage(
             @PathVariable("file_name") String fileName
     ) {
@@ -44,18 +49,37 @@ public class UploadController {
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(image.contentType()))
+                .contentLength(image.contentLength())
                 .body(image.resource());
     }
 
     @RateLimit(limit = 120, keyType = RateLimitKeyType.IP)
-    @GetMapping("/messages/{file_name:.+}")
+    @GetMapping("/messages/{file_name:[0-9a-f]{64}(?:\\.[A-Za-z0-9]{1,10})?}")
     public ResponseEntity<Resource> getMessageFile(
             @PathVariable("file_name") String fileName
     ) {
         UploadService.PublicFileResource file = uploadService.loadMessageFile(fileName);
 
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(file.contentType()))
+                .header("X-Content-Type-Options", "nosniff")
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename(file.fileName(), StandardCharsets.UTF_8)
+                                .build()
+                                .toString()
+                )
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(file.contentLength())
                 .body(file.resource());
+    }
+
+    private FileUploadResponse sanitizeUploadResponse(FileUploadResponse response) {
+        return new FileUploadResponse(
+                HtmlUtils.htmlEscape(response.originalFilename()),
+                response.contentType(),
+                response.size(),
+                response.url()
+        );
     }
 }

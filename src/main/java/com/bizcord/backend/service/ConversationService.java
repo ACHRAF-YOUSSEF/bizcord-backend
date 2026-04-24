@@ -21,6 +21,7 @@ import java.util.Optional;
 public class ConversationService {
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
+    private final ConversationMapper conversationMapper;
 
     @Transactional(readOnly = true)
     public List<ConversationResponse> getConversations(String email) {
@@ -108,6 +109,6 @@ public class ConversationService {
     }
 
     private ConversationResponse toResponse(Conversation c) {
-        return ConversationMapper.INSTANCE.toResponse(c);
+        return conversationMapper.toResponse(c);
     }
 }

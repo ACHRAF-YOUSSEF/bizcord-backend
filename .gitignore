@@ -33,9 +33,11 @@ build/
 .vscode/
 /uploads
 /postgres_data
+/minio_data
 
 # Environment & secrets
 .env
+.env.prod
 *.pem
 *.key
 *.p12
@@ -49,3 +51,4 @@ coverage
 # OS artifacts
 .DS_Store
 Thumbs.db
+compose-dev.yml

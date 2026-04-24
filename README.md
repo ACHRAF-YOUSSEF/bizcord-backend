@@ -1,6 +1,6 @@
 # BizCord Backend
 
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.10-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.13-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/achrafyoussef/bizcord-backend)
@@ -59,7 +59,7 @@ Client (Angular SPA)
 - **Real-time Messaging** — STOMP WebSocket for live message delivery, edits, and deletes
 - **Direct Messages** — Private 1-to-1 conversations with real-time delivery
 - **Voice & Video** — WebRTC room orchestration delegated to the mediasoup SFU
-- **File Uploads** — Images and attachments up to 4 MB; type-validated (PNG, JPG, WEBP, GIF)
+- **File Uploads** — Images and attachments stored in MinIO object storage behind stable backend upload/download endpoints
 - **Reactions** — Emoji reactions on messages
 - **Typing Indicators** — Broadcast presence in text channels and DMs
 - **Notifications** — Server-sent notification events over WebSocket
@@ -74,7 +74,7 @@ Client (Angular SPA)
 
 | Layer | Technology |
 |---|---|
-| Framework | Spring Boot 3.5.10 |
+| Framework | Spring Boot 3.5.13 |
 | Language | Java 25 (virtual threads enabled) |
 | Security | Spring Security + JJWT 0.13 |
 | Database | PostgreSQL 17 via Spring Data JPA (Hibernate) |
@@ -148,8 +148,12 @@ Set these when running with `SPRING_PROFILES_ACTIVE=prod`.
 | `APP_COOKIE_SECURE` | No | `true` | `false` when serving over plain HTTP |
 | `APP_MEDIASOUP_API_SECRET` | No | `bizcord-mediasoup-secret` | Shared secret with the mediasoup service |
 | `APP_MEDIASOUP_URL` | No | `http://mediasoup:3000` | Internal URL of the mediasoup container |
-| `APP_UPLOAD_BASE_DIRECTORY` | No | `uploads` | Directory where files are stored on disk |
-| `APP_UPLOAD_PUBLIC_BASE_PATH` | No | `/uploads` | URL prefix for serving uploaded files |
+| `APP_STORAGE_PUBLIC_BASE_PATH` | No | `/api/uploads` | Relative URL prefix stored in API responses |
+| `APP_STORAGE_MINIO_ENDPOINT` | Yes | `http://minio:9000` | MinIO/S3-compatible endpoint |
+| `APP_STORAGE_MINIO_ACCESS_KEY` | Yes | `minioadmin` | MinIO access key |
+| `APP_STORAGE_MINIO_SECRET_KEY` | Yes | `minioadmin` | MinIO secret key |
+| `APP_STORAGE_MINIO_BUCKET` | No | `bizcord` | Bucket name used for BizCord uploads |
+| `APP_STORAGE_MINIO_SECURE` | No | `false` | Whether to use secure MinIO endpoint wiring |
 
 ---
 

@@ -5,14 +5,11 @@ import com.bizcord.backend.entity.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
-import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper
+@Mapper(config = MapStructConfig.class, uses = HtmlEscapeMapper.class)
 public interface ServerMapper {
-    ServerMapper INSTANCE = Mappers.getMapper(ServerMapper.class);
-
     @Mapping(source = "user.id", target = "userId")
     @Mapping(target = "members", ignore = true)
     @Mapping(target = "channels", ignore = true)
@@ -36,11 +33,13 @@ public interface ServerMapper {
     @Mapping(source = "status", target = "status")
     ServerResponse.UserItem toUserItem(User user);
 
+    @Mapping(source = "name", target = "name", qualifiedByName = "escapeHtml")
     @Mapping(source = "server.id", target = "serverId")
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "category.id", target = "categoryId")
     ServerResponse.ChannelItem toChannelItem(Channel channel);
 
+    @Mapping(source = "name", target = "name", qualifiedByName = "escapeHtml")
     @Mapping(source = "server.id", target = "serverId")
     ServerResponse.CategoryItem toCategoryItem(ChannelCategory category);
 

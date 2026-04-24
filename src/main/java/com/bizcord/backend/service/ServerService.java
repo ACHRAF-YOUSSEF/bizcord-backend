@@ -4,6 +4,7 @@ import com.bizcord.backend.dto.ServerCreateRequest;
 import com.bizcord.backend.dto.ServerResponse;
 import com.bizcord.backend.dto.ServerUpdateRequest;
 import com.bizcord.backend.entity.*;
+import com.bizcord.backend.mapper.ServerMapper;
 import com.bizcord.backend.repository.BannedUserRepository;
 import com.bizcord.backend.repository.ChannelCategoryRepository;
 import com.bizcord.backend.repository.ChannelRepository;
@@ -35,6 +36,7 @@ public class ServerService {
     private final ChannelRepository channelRepository;
     private final ChannelCategoryRepository categoryRepository;
     private final BannedUserRepository bannedUserRepository;
+    private final ServerMapper serverMapper;
 
     @Transactional(readOnly = true)
     public List<ServerResponse> getServersThatTheCurrentUserIsMemberOf(String email) {
@@ -61,7 +63,7 @@ public class ServerService {
                 .collect(java.util.stream.Collectors.groupingBy(cat -> cat.getServer().getId()));
 
         return servers.stream()
-                .map(server -> ChannelCategoryService.toResponse(
+                .map(server -> serverMapper.toResponse(
                         server,
                         membersByServerId.getOrDefault(server.getId(), List.of()),
                         channelsByServerId.getOrDefault(server.getId(), List.of()),
@@ -132,7 +134,7 @@ public class ServerService {
         server.getCategories().add(voiceCategory);
 
         Server saved = serverRepository.save(server);
-        return ChannelCategoryService.toResponse(saved, List.of(ownerMember), List.of(generalChannel), List.of(textCategory, voiceCategory));
+        return serverMapper.toResponse(saved, List.of(ownerMember), List.of(generalChannel), List.of(textCategory, voiceCategory));
     }
 
     @Transactional
@@ -342,6 +344,6 @@ public class ServerService {
         List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
         List<Channel> channels = channelRepository.findAllByServerIdWithUserAndServer(serverId);
         List<ChannelCategory> categories = categoryRepository.findAllByServerIdWithServer(serverId);
-        return ChannelCategoryService.toResponse(server, members, channels, categories);
+        return serverMapper.toResponse(server, members, channels, categories);
     }
 }

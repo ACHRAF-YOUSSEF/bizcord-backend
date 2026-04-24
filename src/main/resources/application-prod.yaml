@@ -35,9 +35,14 @@ app:
       - Authorization
     allow-credentials: true
     max-age: 3600
-  upload:
-    base-directory: ${APP_UPLOAD_BASE_DIRECTORY:uploads}
-    public-base-path: ${APP_UPLOAD_PUBLIC_BASE_PATH:/uploads}
+  storage:
+    public-base-path: ${APP_STORAGE_PUBLIC_BASE_PATH:/api/uploads}
+    minio:
+      endpoint: ${APP_STORAGE_MINIO_ENDPOINT}
+      access-key: ${APP_STORAGE_MINIO_ACCESS_KEY}
+      secret-key: ${APP_STORAGE_MINIO_SECRET_KEY}
+      bucket: ${APP_STORAGE_MINIO_BUCKET:bizcord}
+      secure: ${APP_STORAGE_MINIO_SECURE:false}
   cookie:
     secure: ${APP_COOKIE_SECURE:true}
     same-site: Strict

@@ -8,6 +8,7 @@ import com.bizcord.backend.entity.Member;
 import com.bizcord.backend.entity.Server;
 import com.bizcord.backend.entity.User;
 import com.bizcord.backend.entity.UserStatus;
+import com.bizcord.backend.mapper.UserProfileMapper;
 import com.bizcord.backend.repository.MemberRepository;
 import com.bizcord.backend.repository.ServerRepository;
 import com.bizcord.backend.repository.UserRepository;
@@ -31,12 +32,13 @@ public class UserService {
     private final MemberRepository memberRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final PasswordEncoder passwordEncoder;
+    private final UserProfileMapper userProfileMapper;
 
     public UserProfileResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
-        return toProfileResponse(user);
+        return userProfileMapper.toResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -57,7 +59,7 @@ public class UserService {
                 .collect(Collectors.toMap(m -> m.getUser().getId(), m -> m, (a, _) -> a))
                 .values()
                 .stream()
-                .map(this::toProfileResponse)
+                .map(userProfileMapper::toResponse)
                 .toList();
     }
 
@@ -95,14 +97,14 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
-        if (request.getFullName() != null) {
-            user.setFullName(request.getFullName());
+        if (request.fullName() != null) {
+            user.setFullName(request.fullName());
         }
-        if (request.getUsername() != null) {
-            user.setUsername(request.getUsername());
+        if (request.username() != null) {
+            user.setUsername(request.username());
         }
         userRepository.save(user);
-        return toProfileResponse(user);
+        return userProfileMapper.toResponse(user);
     }
 
     @Transactional
@@ -112,7 +114,7 @@ public class UserService {
 
         user.setImageUrl(imageUrl);
         userRepository.save(user);
-        return toProfileResponse(user);
+        return userProfileMapper.toResponse(user);
     }
 
     @Transactional
@@ -120,10 +122,10 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
         }
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
     }
 
@@ -137,43 +139,11 @@ public class UserService {
 
     private void broadcastPresence(String userId, UserStatus status) {
         List<Member> members = memberRepository.findAllByUserIdWithUserAndServer(userId);
-        PresenceEvent event = PresenceEvent.builder()
-                .type("PRESENCE_UPDATE")
-                .userId(userId)
-                .status(status)
-                .build();
+        PresenceEvent event = new PresenceEvent("PRESENCE_UPDATE", userId, status);
         for (Member member : members) {
             messagingTemplate.convertAndSend(
                     "/topic/servers/" + member.getServer().getId() + "/presence", event);
         }
         messagingTemplate.convertAndSend("/topic/users/" + userId + "/presence", event);
-    }
-
-    private UserProfileResponse toProfileResponse(Member member) {
-        User user = member.getUser();
-
-        return UserProfileResponse
-                .builder()
-                .id(user.getId())
-                .fullName(user.getFullName())
-                .username(user.getUsername2())
-                .email(user.getEmail())
-                .imageUrl(user.getImageUrl())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .build();
-    }
-
-    private UserProfileResponse toProfileResponse(User user) {
-        return UserProfileResponse
-                .builder()
-                .id(user.getId())
-                .fullName(user.getFullName())
-                .username(user.getUsername2())
-                .email(user.getEmail())
-                .imageUrl(user.getImageUrl())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.bizcord.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,5 +15,6 @@ import lombok.NoArgsConstructor;
 public class CategoryCreateRequest {
     @NotBlank
     @Size(min = 1, max = 100)
+    @Pattern(regexp = "^[^<>\"'`]*$", message = "Category name contains unsupported characters")
     private String name;
 }

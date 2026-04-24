@@ -1,11 +1,6 @@
 package com.bizcord.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
 
-@Data
-public class RefreshTokenRequest {
-    @NotBlank
-    private String refreshToken;
+public record RefreshTokenRequest(@NotBlank String refreshToken) {
 }
-

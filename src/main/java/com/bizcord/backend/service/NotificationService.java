@@ -30,6 +30,7 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final MemberRepository memberRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationMapper notificationMapper;
 
     // --- Query operations ---
 
@@ -211,7 +212,7 @@ public class NotificationService {
     }
 
     private NotificationResponse toResponse(Notification n) {
-        return NotificationMapper.INSTANCE.toResponse(n);
+        return notificationMapper.toResponse(n);
     }
 
     private String truncate(String text, int maxLength) {

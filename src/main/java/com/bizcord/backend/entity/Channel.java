@@ -2,7 +2,12 @@ package com.bizcord.backend.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -16,7 +21,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(exclude = {"server", "user", "category"})
-@ToString(exclude = {"server", "user", "category"})
+@ToString(exclude = {"server", "user", "category", "messages"})
 @Entity(name = "bizcord_channels")
 @EntityListeners(AuditingEntityListener.class)
 public class Channel {
