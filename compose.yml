@@ -46,7 +46,7 @@ services:
         mc mb --ignore-existing local/${APP_STORAGE_MINIO_BUCKET:-bizcord}
 
   backend:
-    image: achrafyoussef/bizcord-backend:1.1.1
+    image: achrafyoussef/bizcord-backend:latest
     container_name: bizcord-backend
     restart: unless-stopped
     depends_on:
@@ -75,7 +75,7 @@ services:
       - "8080"
 
   mediasoup:
-    image: achrafyoussef/bizcord-mediasoup:1.1.1
+    image: achrafyoussef/bizcord-mediasoup:latest
     container_name: bizcord-mediasoup
     restart: unless-stopped
     environment:
@@ -88,7 +88,7 @@ services:
     network_mode: "host"
 
   frontend:
-    image: achrafyoussef/bizcord-frontend:1.1.1
+    image: achrafyoussef/bizcord-frontend:latest
     container_name: bizcord-frontend
     environment:
       BACKEND_URL: http://bizcord-backend:8080
