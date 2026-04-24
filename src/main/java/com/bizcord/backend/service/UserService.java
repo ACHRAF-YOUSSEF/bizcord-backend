@@ -77,15 +77,25 @@ public class UserService {
     @Transactional
     public void setStatusOnConnect(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
-            user.setStatus(UserStatus.ONLINE);
-            userRepository.save(user);
-            broadcastPresence(user.getId(), UserStatus.ONLINE);
+            if (user.getStatus() == UserStatus.INVISIBLE) {
+                broadcastPresence(user.getId(), UserStatus.INVISIBLE);
+            } else if (user.getStatus() == UserStatus.OFFLINE) {
+                user.setStatus(UserStatus.ONLINE);
+                userRepository.save(user);
+                broadcastPresence(user.getId(), UserStatus.ONLINE);
+            } else {
+                // Preserve IDLE / DO_NOT_DISTURB across reconnect
+                broadcastPresence(user.getId(), user.getStatus());
+            }
         });
     }
 
     @Transactional
     public void setStatusOnDisconnect(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
+            if (user.getStatus() == UserStatus.INVISIBLE) {
+                return; // Already appears offline — no broadcast change
+            }
             user.setStatus(UserStatus.OFFLINE);
             userRepository.save(user);
             broadcastPresence(user.getId(), UserStatus.OFFLINE);
@@ -138,8 +148,10 @@ public class UserService {
     }
 
     private void broadcastPresence(String userId, UserStatus status) {
+        // INVISIBLE users appear as OFFLINE to others
+        UserStatus broadcastStatus = status == UserStatus.INVISIBLE ? UserStatus.OFFLINE : status;
         List<Member> members = memberRepository.findAllByUserIdWithUserAndServer(userId);
-        PresenceEvent event = new PresenceEvent("PRESENCE_UPDATE", userId, status);
+        PresenceEvent event = new PresenceEvent("PRESENCE_UPDATE", userId, broadcastStatus);
         for (Member member : members) {
             messagingTemplate.convertAndSend(
                     "/topic/servers/" + member.getServer().getId() + "/presence", event);
