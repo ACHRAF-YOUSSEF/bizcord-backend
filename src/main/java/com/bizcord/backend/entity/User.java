@@ -78,6 +78,11 @@ public class User implements UserDetails {
     @Column(nullable = false, columnDefinition = "varchar(255) not null default 'OFFLINE'")
     private UserStatus status = UserStatus.OFFLINE;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "preferred_status", nullable = false, columnDefinition = "varchar(255) not null default 'ONLINE'")
+    private UserStatus preferredStatus = UserStatus.ONLINE;
+
     @CreatedDate
     private LocalDateTime createdAt;
 

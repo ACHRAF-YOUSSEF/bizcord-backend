@@ -68,7 +68,8 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
-        user.setStatus(status);
+        user.setPreferredStatus(status);
+        user.setStatus(status == UserStatus.INVISIBLE ? UserStatus.OFFLINE : status);
         userRepository.save(user);
 
         broadcastPresence(user.getId(), status);
@@ -77,15 +78,13 @@ public class UserService {
     @Transactional
     public void setStatusOnConnect(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
-            if (user.getStatus() == UserStatus.INVISIBLE) {
+            UserStatus preferred = user.getPreferredStatus();
+            if (preferred == UserStatus.INVISIBLE) {
                 broadcastPresence(user.getId(), UserStatus.INVISIBLE);
-            } else if (user.getStatus() == UserStatus.OFFLINE) {
-                user.setStatus(UserStatus.ONLINE);
-                userRepository.save(user);
-                broadcastPresence(user.getId(), UserStatus.ONLINE);
             } else {
-                // Preserve IDLE / DO_NOT_DISTURB across reconnect
-                broadcastPresence(user.getId(), user.getStatus());
+                user.setStatus(preferred);
+                userRepository.save(user);
+                broadcastPresence(user.getId(), preferred);
             }
         });
     }
@@ -93,11 +92,10 @@ public class UserService {
     @Transactional
     public void setStatusOnDisconnect(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
-            if (user.getStatus() == UserStatus.INVISIBLE) {
-                return; // Already appears offline — no broadcast change
+            if (user.getStatus() != UserStatus.OFFLINE) {
+                user.setStatus(UserStatus.OFFLINE);
+                userRepository.save(user);
             }
-            user.setStatus(UserStatus.OFFLINE);
-            userRepository.save(user);
             broadcastPresence(user.getId(), UserStatus.OFFLINE);
         });
     }
