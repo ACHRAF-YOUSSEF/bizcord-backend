@@ -145,6 +145,16 @@ public class UserService {
         userRepository.delete(user);
     }
 
+    @Transactional(readOnly = true)
+    public void broadcastServerPresence(String serverId) {
+        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
+        for (Member member : members) {
+            User user = member.getUser();
+            PresenceEvent event = new PresenceEvent("PRESENCE_UPDATE", user.getId(), user.getStatus());
+            messagingTemplate.convertAndSend("/topic/servers/" + serverId + "/presence", event);
+        }
+    }
+
     private void broadcastPresence(String userId, UserStatus status) {
         // INVISIBLE users appear as OFFLINE to others
         UserStatus broadcastStatus = status == UserStatus.INVISIBLE ? UserStatus.OFFLINE : status;
