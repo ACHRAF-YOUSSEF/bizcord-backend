@@ -68,7 +68,8 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
-        user.setStatus(status);
+        user.setPreferredStatus(status);
+        user.setStatus(status == UserStatus.INVISIBLE ? UserStatus.OFFLINE : status);
         userRepository.save(user);
 
         broadcastPresence(user.getId(), status);
@@ -77,17 +78,24 @@ public class UserService {
     @Transactional
     public void setStatusOnConnect(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
-            user.setStatus(UserStatus.ONLINE);
-            userRepository.save(user);
-            broadcastPresence(user.getId(), UserStatus.ONLINE);
+            UserStatus preferred = user.getPreferredStatus();
+            if (preferred == UserStatus.INVISIBLE) {
+                broadcastPresence(user.getId(), UserStatus.INVISIBLE);
+            } else {
+                user.setStatus(preferred);
+                userRepository.save(user);
+                broadcastPresence(user.getId(), preferred);
+            }
         });
     }
 
     @Transactional
     public void setStatusOnDisconnect(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
-            user.setStatus(UserStatus.OFFLINE);
-            userRepository.save(user);
+            if (user.getStatus() != UserStatus.OFFLINE) {
+                user.setStatus(UserStatus.OFFLINE);
+                userRepository.save(user);
+            }
             broadcastPresence(user.getId(), UserStatus.OFFLINE);
         });
     }
@@ -137,9 +145,21 @@ public class UserService {
         userRepository.delete(user);
     }
 
+    @Transactional(readOnly = true)
+    public void broadcastServerPresence(String serverId) {
+        List<Member> members = memberRepository.findAllByServerIdWithUserAndServer(serverId);
+        for (Member member : members) {
+            User user = member.getUser();
+            PresenceEvent event = new PresenceEvent("PRESENCE_UPDATE", user.getId(), user.getStatus());
+            messagingTemplate.convertAndSend("/topic/servers/" + serverId + "/presence", event);
+        }
+    }
+
     private void broadcastPresence(String userId, UserStatus status) {
+        // INVISIBLE users appear as OFFLINE to others
+        UserStatus broadcastStatus = status == UserStatus.INVISIBLE ? UserStatus.OFFLINE : status;
         List<Member> members = memberRepository.findAllByUserIdWithUserAndServer(userId);
-        PresenceEvent event = new PresenceEvent("PRESENCE_UPDATE", userId, status);
+        PresenceEvent event = new PresenceEvent("PRESENCE_UPDATE", userId, broadcastStatus);
         for (Member member : members) {
             messagingTemplate.convertAndSend(
                     "/topic/servers/" + member.getServer().getId() + "/presence", event);

@@ -11,6 +11,7 @@ public record UserProfileResponse(
         String email,
         String imageUrl,
         UserStatus status,
+        UserStatus preferredStatus,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
