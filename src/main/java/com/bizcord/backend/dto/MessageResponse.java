@@ -41,6 +41,7 @@ public class MessageResponse {
         private String username;
         private String imageUrl;
         private UserStatus status;
+        private boolean deleted;
     }
 
     @Data

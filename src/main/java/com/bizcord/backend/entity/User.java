@@ -78,6 +78,10 @@ public class User implements UserDetails {
     private boolean enabled = false;
 
     @Builder.Default
+    @Column(nullable = false)
+    private boolean deleted = false;
+
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "varchar(255) not null default 'OFFLINE'")
     private UserStatus status = UserStatus.OFFLINE;

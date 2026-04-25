@@ -12,6 +12,7 @@ public record UserProfileResponse(
         String imageUrl,
         UserStatus status,
         UserStatus preferredStatus,
+        boolean deleted,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
