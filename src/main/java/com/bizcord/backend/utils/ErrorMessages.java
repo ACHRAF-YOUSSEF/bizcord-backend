@@ -11,6 +11,12 @@ public final class ErrorMessages {
     public static final String AUTH_INVALID_REFRESH_TOKEN = "Invalid refresh token";
     public static final String AUTH_REFRESH_TOKEN_REVOKED = "Refresh token has been revoked";
     public static final String AUTH_REFRESH_TOKEN_EXPIRED = "Refresh token has expired";
+    public static final String AUTH_ACCOUNT_NOT_ACTIVATED = "ACCOUNT_NOT_ACTIVATED";
+    public static final String AUTH_INVALID_VERIFICATION_TOKEN = "Invalid or expired verification token";
+    public static final String AUTH_VERIFICATION_TOKEN_EXPIRED = "Verification link has expired. Please request a new one.";
+    public static final String AUTH_VERIFICATION_TOKEN_USED = "This verification link has already been used.";
+    public static final String AUTH_ALREADY_VERIFIED = "Account is already verified";
+    public static final String AUTH_INVALID_RESET_TOKEN = "Invalid or expired password reset token";
 
     // Server
     public static final String SERVER_NOT_FOUND = "Server not found";

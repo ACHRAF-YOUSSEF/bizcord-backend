@@ -24,7 +24,18 @@ spring:
     activate:
       on-profile: dev
 
+  mail:
+    host: localhost
+    port: 1025
+    protocol: smtp
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
 app:
+  frontend-url: http://localhost:4200
+  mail:
+    from: noreply@bizcord.local
   cors:
     allowed-origin-patterns:
       - http://localhost:4200

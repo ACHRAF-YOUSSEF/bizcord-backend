@@ -74,6 +74,10 @@ public class User implements UserDetails {
     private List<Conversation> conversationsReceived = new ArrayList<>();
 
     @Builder.Default
+    @Column(nullable = false)
+    private boolean enabled = false;
+
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "varchar(255) not null default 'OFFLINE'")
     private UserStatus status = UserStatus.OFFLINE;
@@ -97,6 +101,11 @@ public class User implements UserDetails {
     @Override
     public String getUsername() {
         return email;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
     }
 
     public String getUsername2() {
