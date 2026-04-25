@@ -55,6 +55,8 @@ Client (Angular SPA)
 ## ✨ Features
 
 - **Authentication** — JWT access tokens (15 min) + HttpOnly refresh-token cookies (7 days), token rotation on refresh
+- **Email Verification** — Account activation via email link on registration; resend endpoint included
+- **Password Reset** — Forgot-password flow with time-limited token sent by email
 - **Servers & Channels** — Create/manage servers, text and voice channels, channel categories with drag-and-drop ordering support
 - **Real-time Messaging** — STOMP WebSocket for live message delivery, edits, and deletes
 - **Direct Messages** — Private 1-to-1 conversations with real-time delivery
@@ -67,6 +69,7 @@ Client (Angular SPA)
 - **Invites** — Token-based server invite links
 - **Rate Limiting** — Per-endpoint request throttling via Bucket4j
 - **Member Management** — Role-based access within servers
+- **Soft Delete** — Users are soft-deleted (flagged) rather than physically removed
 
 ---
 
@@ -79,6 +82,7 @@ Client (Angular SPA)
 | Security | Spring Security + JJWT 0.13 |
 | Database | PostgreSQL 17 via Spring Data JPA (Hibernate) |
 | Real-time | Spring WebSocket (STOMP, no SockJS) |
+| Email | Spring Mail + Thymeleaf HTML templates |
 | Rate Limiting | Bucket4j |
 | Build tool | Maven (mvnw wrapper included) |
 | Container | Eclipse Temurin base image |
@@ -154,6 +158,14 @@ Set these when running with `SPRING_PROFILES_ACTIVE=prod`.
 | `APP_STORAGE_MINIO_SECRET_KEY` | Yes | `minioadmin` | MinIO secret key |
 | `APP_STORAGE_MINIO_BUCKET` | No | `bizcord` | Bucket name used for BizCord uploads |
 | `APP_STORAGE_MINIO_SECURE` | No | `false` | Whether to use secure MinIO endpoint wiring |
+| `MAIL_HOST` | Yes (prod) | `localhost` | SMTP server hostname |
+| `MAIL_PORT` | No | `1025` | SMTP server port |
+| `MAIL_USERNAME` | No | — | SMTP username |
+| `MAIL_PASSWORD` | No | — | SMTP password |
+| `MAIL_SMTP_AUTH` | No | `false` | Enable SMTP authentication |
+| `MAIL_SMTP_STARTTLS` | No | `false` | Enable STARTTLS |
+| `MAIL_FROM` | No | `noreply@bizcord.achrafyoussef.tech` | Sender address for outgoing emails |
+| `APP_FRONTEND_URL` | No | `https://bizcord.achrafyoussef.tech` | Base URL embedded in email links |
 
 ---
 
@@ -161,7 +173,7 @@ Set these when running with `SPRING_PROFILES_ACTIVE=prod`.
 
 | Domain | Base Path |
 |---|---|
-| Authentication | `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout` |
+| Authentication | `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `GET /api/auth/verify`, `POST /api/auth/resend-verification`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password` |
 | Users | `GET/PATCH /api/users/me`, `PATCH /api/users/me/avatar` |
 | Servers | `CRUD /api/servers` |
 | Channels | `CRUD /api/channels` |
