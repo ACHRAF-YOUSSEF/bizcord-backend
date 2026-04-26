@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -65,12 +66,20 @@ public class AuthService {
 
     @Transactional
     public TokenPair authenticate(AuthRequest request) {
+        repository.findByEmail(request.email())
+                .filter(user -> !user.isEnabled())
+                .ifPresent(_ -> {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.AUTH_ACCOUNT_NOT_ACTIVATED);
+                });
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
         } catch (DisabledException e) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.AUTH_ACCOUNT_NOT_ACTIVATED);
+        } catch (BadCredentialsException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.AUTH_INVALID_CREDENTIALS);
         }
         var user = repository.findByEmail(request.email()).orElseThrow();
         return buildTokenPair(user);
