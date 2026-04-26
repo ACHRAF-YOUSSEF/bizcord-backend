@@ -55,6 +55,14 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:3000}
       SPRING_PROFILES_ACTIVE: prod
       APP_CORS_ALLOWED_ORIGIN_PATTERNS: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:3000}
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
