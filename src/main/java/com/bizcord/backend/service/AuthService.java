@@ -50,6 +50,13 @@ public class AuthService {
 
     @Transactional
     public void register(RegisterRequest request) {
+        if (repository.existsByEmail(request.email())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.AUTH_EMAIL_ALREADY_USED);
+        }
+        if (repository.existsByUsername(request.username())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.AUTH_USERNAME_ALREADY_USED);
+        }
+
         var user = User.builder()
                 .username(request.username())
                 .fullName(request.fullName())
@@ -57,7 +64,11 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.password()))
                 .enabled(false)
                 .build();
-        repository.save(user);
+        try {
+            repository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.AUTH_EMAIL_ALREADY_USED);
+        }
 
         String token = issueVerificationToken(user, TokenType.EMAIL_VERIFICATION);
         emailService.sendWelcomeEmail(user);
