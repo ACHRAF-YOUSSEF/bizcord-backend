@@ -66,7 +66,7 @@ public class AuthService {
                 .build();
         try {
             repository.save(user);
-        } catch (DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException _) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.AUTH_EMAIL_ALREADY_USED);
         }
 
