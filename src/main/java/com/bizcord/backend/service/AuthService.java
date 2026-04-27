@@ -87,9 +87,9 @@ public class AuthService {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
-        } catch (DisabledException e) {
+        } catch (DisabledException _) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.AUTH_ACCOUNT_NOT_ACTIVATED);
-        } catch (BadCredentialsException e) {
+        } catch (BadCredentialsException _) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.AUTH_INVALID_CREDENTIALS);
         }
         var user = repository.findByEmail(request.email()).orElseThrow();
