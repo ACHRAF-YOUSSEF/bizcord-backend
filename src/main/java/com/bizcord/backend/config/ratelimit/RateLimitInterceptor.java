@@ -39,7 +39,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
 
         String key = resolveKey(request, rateLimit);
-        Bucket bucket = buckets.computeIfAbsent(key, _ -> createBucket(rateLimit));
+        Bucket bucket = buckets.computeIfAbsent(key, k -> createBucket(rateLimit));
 
         if (bucket.tryConsume(1)) {
             long availableTokens = bucket.getAvailableTokens();
@@ -74,11 +74,10 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
         String endpoint = request.getMethod() + ":" + (pattern != null ? pattern.toString() : request.getRequestURI());
 
-        return switch (rateLimit.keyType()) {
-            case IP -> endpoint + ":ip:" + resolveIp(request);
-            case UID -> endpoint + ":uid:" + resolveUserId();
-            case IP_AND_UID -> endpoint + ":ip:" + resolveIp(request) + ":uid:" + resolveUserId();
-        };
+        RateLimitKeyType keyType = rateLimit.keyType();
+        if (keyType == RateLimitKeyType.UID) return endpoint + ":uid:" + resolveUserId();
+        if (keyType == RateLimitKeyType.IP_AND_UID) return endpoint + ":ip:" + resolveIp(request) + ":uid:" + resolveUserId();
+        return endpoint + ":ip:" + resolveIp(request);
     }
 
     private String resolveIp(HttpServletRequest request) {
