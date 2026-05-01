@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,8 @@ import java.util.function.Function;
 @Service
 public class JwtService {
     private static final String ISSUER = "bizcord";
+    private static final String TOKEN_TYPE_CLAIM = "token_type";
+    private static final String TOKEN_TYPE_ACCESS = "ACCESS";
     private static final int MIN_KEY_BYTES = 32;
 
     private final JwtProperties jwtProperties;
@@ -36,6 +39,13 @@ public class JwtService {
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
+    @PostConstruct
+    void validateConfig() {
+        if (jwtProperties.getAccessTokenExpiryMs() <= 0) {
+            throw new IllegalStateException("app.jwt.access-token-expiry-ms must be > 0");
+        }
+    }
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -49,6 +59,7 @@ public class JwtService {
     }
 
     public String generateToken(Map<String, Object> extraClaims, User userDetails) {
+        extraClaims.put(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS);
         return Jwts.builder()
                 .claims(extraClaims)
                 .issuer(ISSUER)
@@ -62,7 +73,9 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        final Claims claims = extractAllClaims(token);
+        final boolean isAccessToken = TOKEN_TYPE_ACCESS.equals(claims.get(TOKEN_TYPE_CLAIM));
+        return username.equals(userDetails.getUsername()) && !isTokenExpired(token) && isAccessToken;
     }
 
     private boolean isTokenExpired(String token) {
