@@ -24,6 +24,7 @@ spring:
 
 app:
   security:
+    trusted-proxy-ips: ${APP_TRUSTED_PROXY_IPS:}
     disposable-email-domains: >
       10minutemail,20minutemail,33mail,5ymail,anonbox,dispostable,fakeinbox,
       guerrillamail,mailinator,maildrop,mailnesia,moakt,my10minutemail,
