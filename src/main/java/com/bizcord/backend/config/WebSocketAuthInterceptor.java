@@ -3,6 +3,8 @@ package com.bizcord.backend.config;
 import com.bizcord.backend.config.jwt.JwtService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.messaging.Message;
@@ -12,7 +14,6 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
+    private static final Logger log = LoggerFactory.getLogger(WebSocketAuthInterceptor.class);
+
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
@@ -53,17 +56,12 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     }
 
     private String getFirstNativeHeaderIgnoreCase(StompHeaderAccessor accessor) {
-        String headerValue = accessor.getFirstNativeHeader("Authorization");
-        if (headerValue != null) {
-            return headerValue;
-        }
-
-        for (Map.Entry<String, List<String>> entry : accessor.toNativeHeaderMap().entrySet()) {
+        Map<String, List<String>> nativeHeaders = accessor.toNativeHeaderMap();
+        for (Map.Entry<String, List<String>> entry : nativeHeaders.entrySet()) {
             if (entry.getKey().equalsIgnoreCase("Authorization") && !entry.getValue().isEmpty()) {
                 return entry.getValue().getFirst();
             }
         }
-
         return null;
     }
 
@@ -78,13 +76,11 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails, null, userDetails.getAuthorities());
-
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
                     accessor.setUser(authToken);
                 }
             }
-        } catch (RuntimeException _) {
-            SecurityContextHolder.clearContext();
+        } catch (Exception e) {
+            log.debug("WebSocket JWT authentication failed: {}", e.getMessage());
         }
     }
 }

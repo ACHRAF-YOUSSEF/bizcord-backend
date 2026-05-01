@@ -26,6 +26,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class UploadService {
     private static final long MAX_IMAGE_SIZE_BYTES = 4L * 1024L * 1024L;
+    private static final long MAX_MESSAGE_FILE_SIZE_BYTES = 50L * 1024L * 1024L;
     private static final String IMAGE_CONTENT_TYPE_PREFIX = "image/";
     private static final Set<String> MESSAGE_ALLOWED_CONTENT_TYPES = Set.of(
             "application/pdf",
@@ -89,6 +90,9 @@ public class UploadService {
                     HttpStatus.UNSUPPORTED_MEDIA_TYPE,
                     "Only images, videos, PDF, ZIP, and text files are allowed"
             );
+        }
+        if (file.getSize() > MAX_MESSAGE_FILE_SIZE_BYTES) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(413), "File size must be 50MB or less");
         }
         return storeHashedFile(file, contentType, "messages");
     }
