@@ -16,10 +16,6 @@ spring:
     properties:
       hibernate:
         format_sql: false
-  servlet:
-    multipart:
-      max-file-size: 50MB
-      max-request-size: 55MB
   config:
     activate:
       on-profile: dev

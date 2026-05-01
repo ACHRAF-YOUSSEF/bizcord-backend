@@ -11,6 +11,10 @@ spring:
       pageable:
         max-page-size: 100
         default-page-size: 20
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 55MB
   application:
     name: Bizcord-Backend
   profiles:
