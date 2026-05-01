@@ -39,6 +39,7 @@ public class DirectMessageResponse {
         private String username;
         private String email;
         private String imageUrl;
+        private boolean deleted;
     }
 
     @Data

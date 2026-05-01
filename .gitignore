@@ -43,6 +43,9 @@ build/
 *.p12
 *.pfx
 
+# RSA key pairs — never commit private keys
+keys/local-only/
+
 # CI / tooling artifacts
 .scannerwork
 coverage
@@ -52,3 +55,6 @@ coverage
 .DS_Store
 Thumbs.db
 compose-dev.yml
+*.md
+!commands.md
+!readme.md

@@ -4,9 +4,11 @@ import com.bizcord.backend.entity.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -15,13 +17,29 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${app.security.trusted-proxy-ips:}")
+    private String trustedProxyIpsRaw;
+
+    private Set<String> trustedProxyIps;
+
+    @PostConstruct
+    void init() {
+        trustedProxyIps = Arrays.stream(trustedProxyIpsRaw.split("[,\\s]+"))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+    }
 
     @Override
     public boolean preHandle(
@@ -39,7 +57,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
 
         String key = resolveKey(request, rateLimit);
-        Bucket bucket = buckets.computeIfAbsent(key, _ -> createBucket(rateLimit));
+        Bucket bucket = buckets.computeIfAbsent(key, k -> createBucket(rateLimit));
 
         if (bucket.tryConsume(1)) {
             long availableTokens = bucket.getAvailableTokens();
@@ -74,19 +92,22 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
         String endpoint = request.getMethod() + ":" + (pattern != null ? pattern.toString() : request.getRequestURI());
 
-        return switch (rateLimit.keyType()) {
-            case IP -> endpoint + ":ip:" + resolveIp(request);
-            case UID -> endpoint + ":uid:" + resolveUserId();
-            case IP_AND_UID -> endpoint + ":ip:" + resolveIp(request) + ":uid:" + resolveUserId();
-        };
+        RateLimitKeyType keyType = rateLimit.keyType();
+        if (keyType == RateLimitKeyType.UID) return endpoint + ":uid:" + resolveUserId();
+        if (keyType == RateLimitKeyType.IP_AND_UID) return endpoint + ":ip:" + resolveIp(request) + ":uid:" + resolveUserId();
+        return endpoint + ":ip:" + resolveIp(request);
     }
 
     private String resolveIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr();
+        if (!trustedProxyIps.isEmpty() && trustedProxyIps.contains(remoteAddr)) {
+            String xff = request.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                String[] parts = xff.split(",");
+                return parts[parts.length - 1].trim();
+            }
         }
-        return request.getRemoteAddr();
+        return remoteAddr;
     }
 
     private String resolveUserId() {

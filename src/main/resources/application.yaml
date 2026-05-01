@@ -4,9 +4,31 @@ spring:
       enabled: true
   main:
     banner-mode: "off"
+  config:
+    import: file:.env[.properties]
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+        default-page-size: 20
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 55MB
   application:
     name: Bizcord-Backend
   profiles:
     default: dev
   jpa:
     open-in-view: false
+
+app:
+  security:
+    trusted-proxy-ips: ${APP_TRUSTED_PROXY_IPS:}
+    disposable-email-domains: >
+      10minutemail,20minutemail,33mail,5ymail,anonbox,dispostable,fakeinbox,
+      guerrillamail,mailinator,maildrop,mailnesia,moakt,my10minutemail,
+      sharklasers,guerrillamailblock,grr,spam4,throwawaymail,trashmail,
+      temp-mail,tempmail,throwam,yopmail,truemail,spamgourmet,spamgourmet.com,
+      spamgourmet.net,spamgourmet.org,spam.la,emailondeck,getairmail,filzmail,
+      discard.email,maildrop.cc,spamfree24,tempr.email,spamgrap,spamdecoy

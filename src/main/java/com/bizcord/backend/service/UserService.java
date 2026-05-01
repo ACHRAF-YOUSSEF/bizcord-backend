@@ -142,7 +142,14 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
-        userRepository.delete(user);
+        user.setDeleted(true);
+        user.setEnabled(false);
+        user.setUsername("Deleted Account");
+        user.setFullName("Deleted Account");
+        user.setEmail("deleted+" + user.getId() + "@bizcord.deleted");
+        user.setPassword("[DELETED]");
+        user.setImageUrl(null);
+        userRepository.save(user);
     }
 
     @Transactional(readOnly = true)

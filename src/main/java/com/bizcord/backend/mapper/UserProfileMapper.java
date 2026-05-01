@@ -19,6 +19,7 @@ public interface UserProfileMapper {
     @Mapping(source = "user.imageUrl", target = "imageUrl")
     @Mapping(source = "user.status", target = "status")
     @Mapping(source = "user.preferredStatus", target = "preferredStatus")
+    @Mapping(source = "user.deleted", target = "deleted")
     @Mapping(source = "user.createdAt", target = "createdAt")
     @Mapping(source = "user.updatedAt", target = "updatedAt")
     UserProfileResponse toResponse(Member member);

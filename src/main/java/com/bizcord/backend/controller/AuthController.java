@@ -3,10 +3,7 @@ package com.bizcord.backend.controller;
 import com.bizcord.backend.config.CookieProperties;
 import com.bizcord.backend.config.ratelimit.RateLimit;
 import com.bizcord.backend.config.ratelimit.RateLimitKeyType;
-import com.bizcord.backend.dto.AuthRequest;
-import com.bizcord.backend.dto.AuthResponse;
-import com.bizcord.backend.dto.RegisterRequest;
-import com.bizcord.backend.dto.TokenPair;
+import com.bizcord.backend.dto.*;
 import com.bizcord.backend.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +25,11 @@ public class AuthController {
 
     @RateLimit(limit = 3, keyType = RateLimitKeyType.IP)
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        TokenPair pair = service.register(request);
+    public ResponseEntity<ApiMessageResponse> register(@Valid @RequestBody RegisterRequest request) {
+        service.register(request);
         return ResponseEntity
                 .status(CREATED)
-                .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(pair.refreshToken()).toString())
-                .body(toResponse(pair));
+                .body(new ApiMessageResponse("Registration successful. Please check your email to verify your account."));
     }
 
     @RateLimit(limit = 5, keyType = RateLimitKeyType.IP)
@@ -68,6 +64,34 @@ public class AuthController {
                 .noContent()
                 .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
                 .build();
+    }
+
+    @RateLimit(limit = 5, keyType = RateLimitKeyType.IP)
+    @GetMapping("/verify")
+    public ResponseEntity<ApiMessageResponse> verifyEmail(@RequestParam String token) {
+        service.verifyEmail(token);
+        return ResponseEntity.ok(new ApiMessageResponse("Account verified successfully. You can now log in."));
+    }
+
+    @RateLimit(limit = 3, keyType = RateLimitKeyType.IP)
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiMessageResponse> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        service.resendVerification(request.email());
+        return ResponseEntity.ok(new ApiMessageResponse("Verification email sent."));
+    }
+
+    @RateLimit(limit = 3, keyType = RateLimitKeyType.IP)
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiMessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        service.forgotPassword(request.email());
+        return ResponseEntity.ok(new ApiMessageResponse("If an account with that email exists, a reset link has been sent."));
+    }
+
+    @RateLimit(limit = 3, keyType = RateLimitKeyType.IP)
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiMessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        service.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.ok(new ApiMessageResponse("Password reset successfully. You can now log in."));
     }
 
     private ResponseCookie buildRefreshCookie(String value) {
