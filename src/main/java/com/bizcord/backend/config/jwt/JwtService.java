@@ -17,12 +17,23 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
+    private static final String ISSUER = "bizcord";
+    private static final int MIN_KEY_BYTES = 32;
+
     private final JwtProperties jwtProperties;
     private final SecretKey signingKey;
 
     public JwtService(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-        this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.getSecretKey()));
+        byte[] keyBytes = Decoders.BASE64.decode(jwtProperties.getSecretKey());
+        if (keyBytes.length < MIN_KEY_BYTES) {
+            throw new IllegalStateException(
+                    "app.jwt.secret-key must decode to at least %d bytes (%d bits) for HMAC-SHA-256. "
+                    .formatted(MIN_KEY_BYTES, MIN_KEY_BYTES * 8) +
+                    "Generate a valid key with: openssl rand -base64 32"
+            );
+        }
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String extractUsername(String token) {
@@ -40,6 +51,7 @@ public class JwtService {
     public String generateToken(Map<String, Object> extraClaims, User userDetails) {
         return Jwts.builder()
                 .claims(extraClaims)
+                .issuer(ISSUER)
                 .subject(userDetails.getEmail())
                 .id(UUID.randomUUID().toString())
                 .issuedAt(new Date(System.currentTimeMillis()))
@@ -64,6 +76,7 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey)
+                .requireIssuer(ISSUER)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
