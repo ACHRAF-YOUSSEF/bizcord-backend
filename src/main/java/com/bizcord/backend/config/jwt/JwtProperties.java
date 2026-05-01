@@ -13,8 +13,11 @@ import org.springframework.validation.annotation.Validated;
 @Component
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtProperties {
-    @NotBlank(message = "app.jwt.secret-key must be set (set the APP_JWT_SECRET_KEY environment variable)")
-    private String secretKey;
+    @NotBlank(message = "app.jwt.private-key-path must be set")
+    private String privateKeyPath;
+
+    @NotBlank(message = "app.jwt.public-key-path must be set")
+    private String publicKeyPath;
+
     private long accessTokenExpiryMs;
 }
-

@@ -13,7 +13,11 @@ import com.bizcord.backend.repository.RefreshTokenRepository;
 import com.bizcord.backend.repository.UserRepository;
 import com.bizcord.backend.repository.VerificationTokenRepository;
 import com.bizcord.backend.utils.ErrorMessages;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,16 +32,26 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
     public static final long REFRESH_TOKEN_EXPIRY_SECONDS = 60L * 60 * 24 * 7;
     private static final long VERIFICATION_TOKEN_EXPIRY_SECONDS = 60L * 15;
     private static final int REFRESH_TOKEN_BYTES = 32;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    @Value("${app.security.disposable-email-domains:}")
+    private String disposableEmailDomainsRaw;
+
+    private Set<String> disposableEmailDomains;
 
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
@@ -48,13 +62,28 @@ public class AuthService {
     private final VerificationTokenRepository verificationTokenRepository;
     private final EmailService emailService;
 
+    @PostConstruct
+    void init() {
+        disposableEmailDomains = Arrays.stream(disposableEmailDomainsRaw.split("[,\\s]+"))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
     @Transactional
     public void register(RegisterRequest request) {
-        if (repository.existsByEmail(request.email())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.AUTH_EMAIL_ALREADY_USED);
+        String emailDomain = request.email().substring(request.email().indexOf('@') + 1).toLowerCase();
+        if (disposableEmailDomains.contains(emailDomain)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Disposable email addresses are not allowed.");
         }
+
         if (repository.existsByUsername(request.username())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.AUTH_USERNAME_ALREADY_USED);
+        }
+
+        if (repository.existsByEmail(request.email())) {
+            return;
         }
 
         var user = User.builder()
@@ -67,7 +96,7 @@ public class AuthService {
         try {
             repository.save(user);
         } catch (DataIntegrityViolationException _) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, ErrorMessages.AUTH_EMAIL_ALREADY_USED);
+            return;
         }
 
         String token = issueVerificationToken(user, TokenType.EMAIL_VERIFICATION);
@@ -123,16 +152,13 @@ public class AuthService {
 
     @Transactional
     public void resendVerification(String email) {
-        User user = repository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.USER_NOT_FOUND));
-
-        if (user.isEnabled()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ErrorMessages.AUTH_ALREADY_VERIFIED);
-        }
-
-        verificationTokenRepository.deleteAllByUserAndType(user, TokenType.EMAIL_VERIFICATION);
-        String token = issueVerificationToken(user, TokenType.EMAIL_VERIFICATION);
-        emailService.sendVerificationEmail(user, token);
+        repository.findByEmail(email)
+                .filter(user -> !user.isEnabled())
+                .ifPresent(user -> {
+                    verificationTokenRepository.deleteAllByUserAndType(user, TokenType.EMAIL_VERIFICATION);
+                    String token = issueVerificationToken(user, TokenType.EMAIL_VERIFICATION);
+                    emailService.sendVerificationEmail(user, token);
+                });
     }
 
     @Transactional
@@ -174,6 +200,8 @@ public class AuthService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.AUTH_INVALID_REFRESH_TOKEN));
 
         if (stored.isRevoked()) {
+            log.warn("Refresh token reuse detected for user {} — revoking all sessions", stored.getUser().getEmail());
+            refreshTokenRepository.deleteAllByUser(stored.getUser());
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.AUTH_REFRESH_TOKEN_REVOKED);
         }
         if (stored.getExpiresAt().isBefore(Instant.now())) {

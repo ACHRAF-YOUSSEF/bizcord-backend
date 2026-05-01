@@ -62,7 +62,8 @@ app:
     path: /api/auth
     max-age: 604800
   jwt:
-    secret-key: ${APP_JWT_SECRET_KEY:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+    private-key-path: ${APP_JWT_PRIVATE_KEY_PATH:./keys/local-only/private_key.pem}
+    public-key-path: ${APP_JWT_PUBLIC_KEY_PATH:./keys/local-only/public_key.pem}
     access-token-expiry-ms: 900000
   mediasoup:
     url: ${MEDIASOUP_URL:http://localhost:3000}

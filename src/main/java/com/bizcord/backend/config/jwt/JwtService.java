@@ -3,13 +3,13 @@ package com.bizcord.backend.config.jwt;
 import com.bizcord.backend.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
+import java.nio.file.Path;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,22 +21,19 @@ public class JwtService {
     private static final String ISSUER = "bizcord";
     private static final String TOKEN_TYPE_CLAIM = "token_type";
     private static final String TOKEN_TYPE_ACCESS = "ACCESS";
-    private static final int MIN_KEY_BYTES = 32;
 
     private final JwtProperties jwtProperties;
-    private final SecretKey signingKey;
+    private final PrivateKey privateKey;
+    private final PublicKey publicKey;
 
     public JwtService(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-        byte[] keyBytes = Decoders.BASE64.decode(jwtProperties.getSecretKey());
-        if (keyBytes.length < MIN_KEY_BYTES) {
-            throw new IllegalStateException(
-                    "app.jwt.secret-key must decode to at least %d bytes (%d bits) for HMAC-SHA-256. "
-                    .formatted(MIN_KEY_BYTES, MIN_KEY_BYTES * 8) +
-                    "Generate a valid key with: openssl rand -base64 32"
-            );
+        try {
+            this.privateKey = KeyUtils.loadPrivateKey(Path.of(jwtProperties.getPrivateKeyPath()));
+            this.publicKey  = KeyUtils.loadPublicKey(Path.of(jwtProperties.getPublicKeyPath()));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to load JWT RSA keys: " + e.getMessage(), e);
         }
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     @PostConstruct
@@ -54,41 +51,34 @@ public class JwtService {
         return claimsResolver.apply(extractAllClaims(token));
     }
 
-    public String generateToken(User userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+    public String generateToken(User user) {
+        return generateToken(new HashMap<>(), user);
     }
 
-    public String generateToken(Map<String, Object> extraClaims, User userDetails) {
+    public String generateToken(Map<String, Object> extraClaims, User user) {
         extraClaims.put(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS);
         return Jwts.builder()
                 .claims(extraClaims)
                 .issuer(ISSUER)
-                .subject(userDetails.getEmail())
+                .subject(user.getEmail())
                 .id(UUID.randomUUID().toString())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + jwtProperties.getAccessTokenExpiryMs()))
-                .signWith(signingKey)
+                .signWith(privateKey)
                 .compact();
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        final Claims claims = extractAllClaims(token);
-        final boolean isAccessToken = TOKEN_TYPE_ACCESS.equals(claims.get(TOKEN_TYPE_CLAIM));
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token) && isAccessToken;
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+        Claims claims = extractAllClaims(token);
+        String username = claims.getSubject();
+        boolean notExpired = !claims.getExpiration().before(new Date());
+        boolean isAccessToken = TOKEN_TYPE_ACCESS.equals(claims.get(TOKEN_TYPE_CLAIM));
+        return username.equals(userDetails.getUsername()) && notExpired && isAccessToken;
     }
 
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .verifyWith(signingKey)
+                .verifyWith(publicKey)
                 .requireIssuer(ISSUER)
                 .build()
                 .parseSignedClaims(token)
