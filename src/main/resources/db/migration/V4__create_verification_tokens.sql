@@ -1,4 +1,4 @@
-CREATE TABLE verification_tokens (
+CREATE TABLE IF NOT EXISTS verification_tokens (
     id VARCHAR(255) PRIMARY KEY,
     token VARCHAR(255) NOT NULL UNIQUE,
     user_id VARCHAR(255) NOT NULL REFERENCES bizcord_users(id) ON DELETE CASCADE,
