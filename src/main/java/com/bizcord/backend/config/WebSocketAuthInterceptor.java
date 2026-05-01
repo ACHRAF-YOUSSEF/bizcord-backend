@@ -17,6 +17,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Map;
+
 @Component
 @RequiredArgsConstructor
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
@@ -31,29 +34,57 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     ) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-        if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            String authHeader = accessor.getFirstNativeHeader("Authorization");
+        if (accessor != null && shouldAuthenticate(accessor)) {
+            String authHeader = getFirstNativeHeaderIgnoreCase(accessor);
 
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String jwt = authHeader.substring(7);
-                String userEmail = jwtService.extractUsername(jwt);
-
-                if (userEmail != null) {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
-
-                    if (jwtService.isTokenValid(jwt, userDetails)) {
-                        UsernamePasswordAuthenticationToken authToken =
-                                new UsernamePasswordAuthenticationToken(
-                                        userDetails, null, userDetails.getAuthorities());
-
-                        SecurityContextHolder.getContext().setAuthentication(authToken);
-                        accessor.setUser(authToken);
-                    }
-                }
+                authenticate(accessor, jwt);
             }
         }
 
         return message;
     }
-}
 
+    private boolean shouldAuthenticate(StompHeaderAccessor accessor) {
+        StompCommand command = accessor.getCommand();
+        return StompCommand.CONNECT.equals(command)
+                || (StompCommand.SEND.equals(command) && accessor.getUser() == null);
+    }
+
+    private String getFirstNativeHeaderIgnoreCase(StompHeaderAccessor accessor) {
+        String headerValue = accessor.getFirstNativeHeader("Authorization");
+        if (headerValue != null) {
+            return headerValue;
+        }
+
+        for (Map.Entry<String, List<String>> entry : accessor.toNativeHeaderMap().entrySet()) {
+            if (entry.getKey().equalsIgnoreCase("Authorization") && !entry.getValue().isEmpty()) {
+                return entry.getValue().getFirst();
+            }
+        }
+
+        return null;
+    }
+
+    private void authenticate(StompHeaderAccessor accessor, String jwt) {
+        try {
+            String userEmail = jwtService.extractUsername(jwt);
+
+            if (userEmail != null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
+
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
+
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    accessor.setUser(authToken);
+                }
+            }
+        } catch (RuntimeException _) {
+            SecurityContextHolder.clearContext();
+        }
+    }
+}

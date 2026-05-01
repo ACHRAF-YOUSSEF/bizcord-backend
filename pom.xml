@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.13</version>
+        <version>4.0.5</version>
         <relativePath/> <!-- lookup parent from a repository -->
     </parent>
     <groupId>com.bizcord</groupId>
@@ -33,9 +33,9 @@
         <mapstruct.version>1.6.3</mapstruct.version>
         <minio.version>9.0.0</minio.version>
         <okhttp.version>5.2.1</okhttp.version>
-        <spring-security.version>7.0.5</spring-security.version>
-        <spring-framework.version>6.2.18</spring-framework.version>
-        <tomcat.version>10.1.54</tomcat.version>
+        <flyway.version>12.3.0</flyway.version>
+        <jackson-bom.version>3.1.2</jackson-bom.version>
+        <tomcat.version>11.0.21</tomcat.version>
         <thymeleaf.version>3.1.4.RELEASE</thymeleaf.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <bouncycastle.version>1.84</bouncycastle.version>
