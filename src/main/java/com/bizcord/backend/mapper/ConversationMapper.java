@@ -8,6 +8,7 @@ import org.mapstruct.Mapping;
 
 @Mapper(config = MapStructConfig.class)
 public interface ConversationMapper {
+    @Mapping(source = "requester.id", target = "requesterId")
     ConversationResponse toResponse(Conversation conversation);
 
     @Mapping(source = "username2", target = "username")

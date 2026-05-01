@@ -1,5 +1,6 @@
 package com.bizcord.backend.dto;
 
+import com.bizcord.backend.entity.ConversationRequestStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -11,6 +12,8 @@ public class ConversationResponse {
     private String id;
     private UserItem user1;
     private UserItem user2;
+    private ConversationRequestStatus requestStatus;
+    private String requesterId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -26,4 +29,3 @@ public class ConversationResponse {
         private LocalDateTime updatedAt;
     }
 }
-

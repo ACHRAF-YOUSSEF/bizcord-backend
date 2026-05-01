@@ -16,6 +16,7 @@ import com.bizcord.backend.utils.ErrorMessages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +59,21 @@ public class UserService {
                 .filter(u -> !u.getUser().getId().equals(currentUser.getId()))
                 .collect(Collectors.toMap(m -> m.getUser().getId(), m -> m, (a, _) -> a))
                 .values()
+                .stream()
+                .map(userProfileMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserProfileResponse> searchUsers(String query, String email) {
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
+
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+
+        return userRepository.searchUsers(query.trim(), currentUser.getId(), PageRequest.of(0, 20))
                 .stream()
                 .map(userProfileMapper::toResponse)
                 .toList();

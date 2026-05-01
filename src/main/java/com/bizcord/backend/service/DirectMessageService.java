@@ -6,6 +6,7 @@ import com.bizcord.backend.dto.DirectMessageUpdateRequest;
 import com.bizcord.backend.dto.DmSearchResponse;
 import com.bizcord.backend.dto.WebSocketMessage;
 import com.bizcord.backend.entity.Conversation;
+import com.bizcord.backend.entity.ConversationRequestStatus;
 import com.bizcord.backend.entity.DirectMessage;
 import com.bizcord.backend.entity.Reaction;
 import com.bizcord.backend.entity.User;
@@ -47,6 +48,7 @@ public class DirectMessageService {
         User currentUser = getCurrentUser(email);
         Conversation conversation = getConversationWithUsers(conversationId);
         assertParticipant(conversation, currentUser);
+        assertCanSend(conversation, currentUser);
 
         List<DirectMessage> messages;
         PageRequest page = PageRequest.of(0, PAGE_SIZE);
@@ -235,6 +237,16 @@ public class DirectMessageService {
         if (!isParticipant) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CONVERSATION_NOT_A_PARTICIPANT);
         }
+    }
+
+    private void assertCanSend(Conversation conversation, User user) {
+        if (conversation.getRequestStatus() != ConversationRequestStatus.PENDING) {
+            return;
+        }
+        if (conversation.getRequester() != null && conversation.getRequester().getId().equals(user.getId())) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CONVERSATION_REQUEST_FORBIDDEN);
     }
 
     private void broadcast(String conversationId, String type, DirectMessageResponse data) {

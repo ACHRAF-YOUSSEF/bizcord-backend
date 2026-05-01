@@ -6,6 +6,10 @@ public final class ErrorMessages {
 
     // User
     public static final String USER_NOT_FOUND = "User not found";
+    public static final String FRIEND_SELF_NOT_ALLOWED = "You cannot add yourself as a friend";
+    public static final String FRIEND_ALREADY_EXISTS = "You are already friends";
+    public static final String FRIEND_REQUEST_NOT_FOUND = "Friend request not found";
+    public static final String FRIEND_REQUEST_FORBIDDEN = "You cannot modify this friend request";
 
     // Auth
     public static final String AUTH_INVALID_REFRESH_TOKEN = "Invalid refresh token";
@@ -55,6 +59,7 @@ public final class ErrorMessages {
     public static final String CONVERSATION_NOT_FOUND = "Conversation not found";
     public static final String CONVERSATION_NOT_A_PARTICIPANT = "You are not a participant of this conversation";
     public static final String CONVERSATION_SELF_NOT_ALLOWED = "You cannot start a conversation with yourself";
+    public static final String CONVERSATION_REQUEST_FORBIDDEN = "Accept the message request before replying";
 
     // Direct Message
     public static final String DIRECT_MESSAGE_NOT_FOUND = "Message not found";

@@ -38,6 +38,14 @@ public class Conversation {
     private User user2;
 
     @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(255) not null default 'ACCEPTED'")
+    private ConversationRequestStatus requestStatus = ConversationRequestStatus.ACCEPTED;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private User requester;
+
+    @Builder.Default
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DirectMessage> directMessages = new ArrayList<>();
 

@@ -38,6 +38,13 @@ public class UserController {
     }
 
     @RateLimit(limit = 60, keyType = RateLimitKeyType.UID)
+    @GetMapping("/search")
+    public ResponseEntity<List<UserProfileResponse>> searchUsers(@RequestParam("q") String query,
+                                                                 @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(userService.searchUsers(query, userDetails.getUsername()));
+    }
+
+    @RateLimit(limit = 60, keyType = RateLimitKeyType.UID)
     @PatchMapping("/me/status")
     public ResponseEntity<Void> updateStatus(@Valid @RequestBody UserStatusRequest request,
                                               @AuthenticationPrincipal UserDetails userDetails) {

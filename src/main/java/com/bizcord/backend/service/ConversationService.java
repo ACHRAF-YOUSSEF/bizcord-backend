@@ -2,6 +2,7 @@ package com.bizcord.backend.service;
 
 import com.bizcord.backend.dto.ConversationResponse;
 import com.bizcord.backend.entity.Conversation;
+import com.bizcord.backend.entity.ConversationRequestStatus;
 import com.bizcord.backend.entity.User;
 import com.bizcord.backend.mapper.ConversationMapper;
 import com.bizcord.backend.repository.ConversationRepository;
@@ -22,6 +23,7 @@ public class ConversationService {
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
     private final ConversationMapper conversationMapper;
+    private final FriendshipService friendshipService;
 
     @Transactional(readOnly = true)
     public List<ConversationResponse> getConversations(String email) {
@@ -29,6 +31,17 @@ public class ConversationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
 
         return conversationRepository.findAllByUserIdOrderByUpdatedAtDesc(currentUser.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConversationResponse> getMessageRequests(String email) {
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
+
+        return conversationRepository.findMessageRequestsForUser(currentUser.getId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -73,9 +86,12 @@ public class ConversationService {
             return toResponse(conv);
         }
 
+        boolean accepted = friendshipService.areFriends(currentUser.getId(), targetUser.getId());
         Conversation conversation = Conversation.builder()
                 .user1(currentUser)
                 .user2(targetUser)
+                .requester(accepted ? null : currentUser)
+                .requestStatus(accepted ? ConversationRequestStatus.ACCEPTED : ConversationRequestStatus.PENDING)
                 .build();
 
         conversationRepository.save(conversation);
@@ -84,6 +100,25 @@ public class ConversationService {
                 .orElseThrow();
 
         return toResponse(saved);
+    }
+
+    @Transactional
+    public ConversationResponse acceptMessageRequest(String conversationId, String email) {
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, ErrorMessages.USER_NOT_FOUND));
+
+        Conversation conversation = conversationRepository.findByIdWithUsers(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ErrorMessages.CONVERSATION_NOT_FOUND));
+
+        assertParticipant(conversation, currentUser);
+        if (conversation.getRequester() != null && conversation.getRequester().getId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ErrorMessages.CONVERSATION_REQUEST_FORBIDDEN);
+        }
+
+        conversation.setRequestStatus(ConversationRequestStatus.ACCEPTED);
+        conversation.setRequester(null);
+        conversation.getDeletedByUserIds().remove(currentUser.getId());
+        return toResponse(conversationRepository.save(conversation));
     }
 
     @Transactional

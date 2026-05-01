@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +38,13 @@ public class ConversationController {
     }
 
     @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
+    @GetMapping("/message-requests")
+    public ResponseEntity<List<ConversationResponse>> getMessageRequests(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(conversationService.getMessageRequests(userDetails.getUsername()));
+    }
+
+    @RateLimit(limit = 30, keyType = RateLimitKeyType.UID)
     @GetMapping("/{conversationId}")
     public ResponseEntity<ConversationResponse> getConversation(
             @PathVariable String conversationId,
@@ -51,6 +59,14 @@ public class ConversationController {
             @AuthenticationPrincipal UserDetails userDetails) {
         ConversationResponse response = conversationService.getOrCreateConversation(userId, userDetails.getUsername());
         return ResponseEntity.status(CREATED).body(response);
+    }
+
+    @RateLimit(limit = 20, keyType = RateLimitKeyType.UID)
+    @PatchMapping("/{conversationId}/accept-request")
+    public ResponseEntity<ConversationResponse> acceptMessageRequest(
+            @PathVariable String conversationId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(conversationService.acceptMessageRequest(conversationId, userDetails.getUsername()));
     }
 
     @RateLimit(limit = 20, keyType = RateLimitKeyType.UID)
@@ -71,4 +87,3 @@ public class ConversationController {
         return ResponseEntity.ok(Map.of("active", active));
     }
 }
-
