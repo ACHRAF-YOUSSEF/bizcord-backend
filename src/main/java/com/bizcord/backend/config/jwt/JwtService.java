@@ -19,6 +19,7 @@ import java.util.function.Function;
 @Service
 public class JwtService {
     private static final String ISSUER = "bizcord";
+    private static final String AUDIENCE = "bizcord-api";
     private static final String TOKEN_TYPE_CLAIM = "token_type";
     private static final String TOKEN_TYPE_ACCESS = "ACCESS";
 
@@ -30,7 +31,7 @@ public class JwtService {
         this.jwtProperties = jwtProperties;
         try {
             this.privateKey = KeyUtils.loadPrivateKey(Path.of(jwtProperties.getPrivateKeyPath()));
-            this.publicKey  = KeyUtils.loadPublicKey(Path.of(jwtProperties.getPublicKeyPath()));
+            this.publicKey = KeyUtils.loadPublicKey(Path.of(jwtProperties.getPublicKeyPath()));
         } catch (Exception e) {
             throw new IllegalStateException("Failed to load JWT RSA keys: " + e.getMessage(), e);
         }
@@ -56,10 +57,15 @@ public class JwtService {
     }
 
     public String generateToken(Map<String, Object> extraClaims, User user) {
-        extraClaims.put(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS);
+        Map<String, Object> claims = new HashMap<>(extraClaims);
+        claims.put(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS);
+
         return Jwts.builder()
-                .claims(extraClaims)
+                .claims(claims)
                 .issuer(ISSUER)
+                .audience()
+                .add(AUDIENCE)
+                .and()
                 .subject(user.getEmail())
                 .id(UUID.randomUUID().toString())
                 .issuedAt(new Date(System.currentTimeMillis()))
@@ -80,6 +86,7 @@ public class JwtService {
         return Jwts.parser()
                 .verifyWith(publicKey)
                 .requireIssuer(ISSUER)
+                .requireAudience(AUDIENCE)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
