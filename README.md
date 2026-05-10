@@ -19,6 +19,7 @@ REST API and WebSocket backend for **BizCord** — a Discord-like real-time team
 - [API Overview](#-api-overview)
 - [Running Tests](#-running-tests)
 - [Docker](#-docker)
+- [Star History](#-star-history)
 - [Author](#-author)
 
 ---
@@ -215,6 +216,12 @@ docker run -p 8080:8080 \
 ```
 
 See [DOCKER_HUB.md](./DOCKER_HUB.md) for the full Docker Hub description and all environment variables.
+
+---
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=ACHRAF-YOUSSEF/bizcord-backend&type=Date)](https://star-history.com/#ACHRAF-YOUSSEF/bizcord-backend&Date)
 
 ---
 
